@@ -24,7 +24,12 @@ const AuthModal = ({ isOpen, onClose }) => {
       }
       onClose();
     } catch (err) {
-      setError(err.response?.data?.message || 'Something went wrong');
+      const status = err?.response?.status;
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        (status ? `Request failed (${status}). Please try again.` : 'Something went wrong');
+      setError(message);
     }
   };
 
