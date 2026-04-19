@@ -24,6 +24,46 @@ const generateMagicLinkToken = (payload) => {
 const generateOtp = () => String(Math.floor(100000 + Math.random() * 900000));
 const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
 
+const demoLoginAccounts = {
+  'admin@cloth-rental.local': {
+    name: 'Studio Admin',
+    role: 'admin',
+    approvalStatus: 'approved',
+    password: 'Admin1234!',
+  },
+  'user@cloth-rental.local': {
+    name: 'Studio User',
+    role: 'user',
+    approvalStatus: 'approved',
+    password: 'User1234!',
+  },
+};
+
+const ensureDemoMongoUser = async (email) => {
+  const normalizedEmail = normalizeEmail(email);
+  const demo = demoLoginAccounts[normalizedEmail];
+  if (!demo || useDevStore) {
+    return;
+  }
+
+  const hashedPassword = await bcrypt.hash(demo.password, 10);
+  await User.updateOne(
+    { email: normalizedEmail },
+    {
+      $set: {
+        name: demo.name,
+        role: demo.role,
+        approvalStatus: demo.approvalStatus,
+        password: hashedPassword,
+      },
+      $setOnInsert: {
+        email: normalizedEmail,
+      },
+    },
+    { upsert: true }
+  );
+};
+
 const findUserByEmailInsensitive = async (email) => {
   const escaped = email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return User.findOne({ email: new RegExp(`^${escaped}$`, 'i') });
@@ -332,6 +372,7 @@ const loginUser = async (req, res) => {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
+    await ensureDemoMongoUser(normalizedEmail);
     const user = await findUserByEmailInsensitive(normalizedEmail);
 
     if (user && !isApprovedUser(user)) {
