@@ -373,20 +373,42 @@ const loginUser = async (req, res) => {
     }
 
     await ensureDemoMongoUser(normalizedEmail);
-    const user = await findUserByEmailInsensitive(normalizedEmail);
 
-    if (user && !isApprovedUser(user)) {
-      return res.status(403).json({ message: 'Account pending admin approval' });
+    const escaped = normalizedEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const users = await User.find({ email: new RegExp(`^${escaped}$`, 'i') });
+
+    if (!users.length) {
+      return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    if (user && (await bcrypt.compare(password, user.password))) {
-      res.json({
+    for (const user of users) {
+      let passwordMatches = false;
+
+      if (typeof user.password === 'string' && user.password.startsWith('$2')) {
+        passwordMatches = await bcrypt.compare(password, user.password);
+      } else if (String(user.password || '') === String(password)) {
+        // Upgrade legacy plain-text passwords after a successful legacy login.
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(password, salt);
+        await user.save();
+        passwordMatches = true;
+      }
+
+      if (!passwordMatches) {
+        continue;
+      }
+
+      if (!isApprovedUser(user)) {
+        return res.status(403).json({ message: 'Account pending admin approval' });
+      }
+
+      return res.json({
         user: toSafeUser(user),
         token: generateToken(user._id, user.role),
       });
-    } else {
-      res.status(401).json({ message: 'Invalid email or password' });
     }
+
+    return res.status(401).json({ message: 'Invalid email or password' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
