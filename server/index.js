@@ -7,6 +7,7 @@ const dotenv = require('dotenv');
 const fs = require('fs');
 const path = require('path');
 const devStore = require('./utils/devStore');
+const { seedMongoDemoDataIfEmpty } = require('./utils/bootstrapMongo');
 
 dotenv.config();
 
@@ -156,6 +157,11 @@ const startServer = async () => {
         useNewUrlParser: true,
         useUnifiedTopology: true,
       });
+
+      const seeded = await seedMongoDemoDataIfEmpty();
+      if (seeded.usersInserted > 0 || seeded.clothesInserted > 0) {
+        console.log(`Seeded Mongo demo data: ${seeded.usersInserted} users, ${seeded.clothesInserted} clothes`);
+      }
 
       console.log('Connected to MongoDB');
     }

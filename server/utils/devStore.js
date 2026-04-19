@@ -419,17 +419,34 @@ const seedInventory = async () => {
     }));
 
   if (state.users.length === 0) {
-    const hashedPassword = await bcrypt.hash('Admin1234!', 10);
-    state.users.push({
-      _id: createId(),
-      name: 'Studio Admin',
-      email: 'admin@cloth-rental.local',
-      password: hashedPassword,
-      role: 'admin',
-      approvalStatus: 'approved',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
+    const [adminPassword, userPassword] = await Promise.all([
+      bcrypt.hash('Admin1234!', 10),
+      bcrypt.hash('User1234!', 10),
+    ]);
+
+    const now = new Date().toISOString();
+    state.users.push(
+      {
+        _id: createId(),
+        name: 'Studio Admin',
+        email: 'admin@cloth-rental.local',
+        password: adminPassword,
+        role: 'admin',
+        approvalStatus: 'approved',
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        _id: createId(),
+        name: 'Studio User',
+        email: 'user@cloth-rental.local',
+        password: userPassword,
+        role: 'user',
+        approvalStatus: 'approved',
+        createdAt: now,
+        updatedAt: now,
+      }
+    );
   }
 };
 

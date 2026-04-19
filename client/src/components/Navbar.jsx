@@ -1,7 +1,7 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import { LogOut, User, Shirt, LayoutDashboard, Lock, Home as HomeIcon } from 'lucide-react';
+import { LogOut, User, LayoutDashboard, Lock, Home as HomeIcon } from 'lucide-react';
 
 const Navbar = () => {
   const { user, logout } = useContext(AuthContext);
@@ -27,7 +27,11 @@ const Navbar = () => {
     }}>
       <div className="container flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2" style={{ fontSize: '1.45rem', fontWeight: 'bold', letterSpacing: '-0.02em' }}>
-          <Shirt style={{ color: 'var(--primary-color)' }} />
+          <img
+            src="/brand-mark.svg"
+            alt="Luxe Rentals"
+            style={{ width: '34px', height: '34px', borderRadius: '10px', boxShadow: '0 8px 20px rgba(0, 0, 0, 0.15)' }}
+          />
           <span>Luxe<span style={{ color: 'var(--primary-color)' }}>Rentals</span></span>
         </Link>
 

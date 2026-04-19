@@ -191,6 +191,11 @@ Response
 }
 ```
 
+Demo credentials available after first startup:
+
+- Admin: `admin@cloth-rental.local` / `Admin1234!`
+- User: `user@cloth-rental.local` / `User1234!`
+
 ### Create booking
 
 Request
