@@ -46,6 +46,12 @@ export const AuthProvider = ({ children }) => {
     return res.data;
   }, []);
 
+  const updateProfile = useCallback(async (payload) => {
+    const res = await api.put('/users/profile', payload);
+    setUser(res.data);
+    return res.data;
+  }, []);
+
   const logout = useCallback(() => {
     localStorage.removeItem('token');
     setUser(null);
@@ -55,9 +61,10 @@ export const AuthProvider = ({ children }) => {
     user,
     login,
     register,
+    updateProfile,
     logout,
     loading,
-  }), [user, login, register, logout, loading]);
+  }), [user, login, register, updateProfile, logout, loading]);
 
   return (
     <AuthContext.Provider value={contextValue}>

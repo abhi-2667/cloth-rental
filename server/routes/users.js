@@ -14,6 +14,7 @@ const {
 } = require('../middleware/validationMiddleware');
 
 const useDevStore = !process.env.MONGO_URI;
+const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
 const toSafeUser = (user) => ({
   id: user._id,
   name: user.name,
@@ -184,9 +185,17 @@ router.put('/profile', protect, approvedAccount, validateProfileUpdatePayload, a
 
       const { name, email, password } = req.body;
       const updates = {};
+      const normalizedEmail = email !== undefined ? normalizeEmail(email) : undefined;
 
       if (name) updates.name = name;
-      if (email) updates.email = email;
+      if (normalizedEmail) {
+        const emailInUse = devStore.listUsers().find((item) => item.email.toLowerCase() === normalizedEmail && item._id !== user._id);
+        if (emailInUse) {
+          return res.status(400).json({ message: 'Email already in use' });
+        }
+
+        updates.email = normalizedEmail;
+      }
 
       if (password) {
         const salt = await bcrypt.genSalt(10);
@@ -209,9 +218,10 @@ router.put('/profile', protect, approvedAccount, validateProfileUpdatePayload, a
     }
 
     const { name, email, password } = req.body;
+    const normalizedEmail = email !== undefined ? normalizeEmail(email) : undefined;
 
     if (name) user.name = name;
-    if (email) user.email = email;
+    if (normalizedEmail) user.email = normalizedEmail;
 
     if (password) {
       const salt = await bcrypt.genSalt(10);

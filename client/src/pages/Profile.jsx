@@ -7,12 +7,16 @@ import { getClothImageSrc } from '../utils/visuals';
 import { formatINR } from '../utils/currency';
 
 const Profile = () => {
-  const { user } = useContext(AuthContext);
+  const { user, updateProfile } = useContext(AuthContext);
   const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [email, setEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [profileError, setProfileError] = useState('');
+  const [profileInfo, setProfileInfo] = useState('');
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [passwordError, setPasswordError] = useState('');
   const [passwordInfo, setPasswordInfo] = useState('');
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
@@ -29,6 +33,7 @@ const Profile = () => {
       navigate('/');
       return;
     }
+    setEmail(user.email || '');
     const fetchBookings = async () => {
       try {
         const bookingRes = await api.get('/bookings/my');
@@ -46,11 +51,47 @@ const Profile = () => {
 
   const activeBookings = bookings.filter((booking) => booking.status === 'booked').length;
   const returnedBookings = bookings.filter((booking) => booking.status === 'returned').length;
+  const cancelledBookings = bookings.filter((booking) => booking.status === 'cancelled').length;
   const totalSpent = bookings.reduce((sum, booking) => sum + (booking.totalPrice || 0), 0);
   const filteredBookings = bookings.filter((booking) => {
     if (bookingFilter === 'all') return true;
     return booking.status === bookingFilter;
   });
+
+  const canCancelBooking = (booking) => {
+    if (booking.status !== 'booked') return false;
+    return new Date(booking.startDate) > new Date(new Date().toDateString());
+  };
+
+  const refreshBookings = async () => {
+    const bookingRes = await api.get('/bookings/my');
+    setBookings(bookingRes.data);
+  };
+
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    if (isUpdatingProfile) return;
+
+    setProfileError('');
+    setProfileInfo('');
+
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) {
+      setProfileError('Email is required.');
+      return;
+    }
+
+    setIsUpdatingProfile(true);
+
+    try {
+      await updateProfile({ email: normalizedEmail });
+      setProfileInfo('Email updated successfully.');
+    } catch (err) {
+      setProfileError(err?.response?.data?.message || 'Unable to update email right now.');
+    } finally {
+      setIsUpdatingProfile(false);
+    }
+  };
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
@@ -80,6 +121,18 @@ const Profile = () => {
       setPasswordError(err?.response?.data?.message || 'Unable to update password right now.');
     } finally {
       setIsUpdatingPassword(false);
+    }
+  };
+
+  const handleCancelBooking = async (bookingId) => {
+    const confirmed = window.confirm('Cancel this booking?');
+    if (!confirmed) return;
+
+    try {
+      await api.put(`/bookings/${bookingId}/cancel`);
+      await refreshBookings();
+    } catch (err) {
+      alert(err?.response?.data?.message || 'Unable to cancel booking right now.');
     }
   };
 
@@ -136,10 +189,52 @@ const Profile = () => {
           <p className="profile-stat-label">Total Spent</p>
           <h3 className="profile-stat-value">{formatINR(totalSpent)}</h3>
         </article>
+
+        <article
+          className="glass profile-stat-card"
+          style={{ '--stat-color': 'var(--danger)', '--stat-bg': 'rgba(248, 113, 113, 0.14)' }}
+        >
+          <span className="profile-stat-icon"><CheckCircle2 size={18} /></span>
+          <p className="profile-stat-label">Cancelled</p>
+          <h3 className="profile-stat-value">{cancelledBookings}</h3>
+        </article>
       </section>
 
       <section className="profile-main-grid">
         <div className="glass profile-password-card">
+          <h2><UserCircle2 size={20} /> Account Details</h2>
+          <p className="profile-card-subtitle">Keep your contact email up to date for booking alerts and receipts.</p>
+
+          {profileError && (
+            <div className="profile-msg profile-msg-error">
+              {profileError}
+            </div>
+          )}
+
+          {profileInfo && (
+            <div className="profile-msg profile-msg-success">
+              {profileInfo}
+            </div>
+          )}
+
+          <form onSubmit={handleUpdateProfile} className="profile-password-form" style={{ marginBottom: '2rem' }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Email Address</label>
+              <input
+                type="email"
+                className="form-control"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email address"
+              />
+            </div>
+
+            <button type="submit" className="btn btn-primary" disabled={isUpdatingProfile} style={{ width: 'fit-content' }}>
+              {isUpdatingProfile ? 'Updating...' : 'Update Email'}
+            </button>
+          </form>
+
           <h2><ShieldCheck size={20} /> Security</h2>
           <p className="profile-card-subtitle">Keep your account protected by updating your password regularly.</p>
 
@@ -219,6 +314,13 @@ const Profile = () => {
             >
               Completed
             </button>
+            <button
+              type="button"
+              className={`profile-tab-btn ${bookingFilter === 'cancelled' ? 'active' : ''}`}
+              onClick={() => setBookingFilter('cancelled')}
+            >
+              Cancelled
+            </button>
           </div>
 
           {filteredBookings.length === 0 ? (
@@ -242,9 +344,19 @@ const Profile = () => {
 
                   <div className="profile-booking-meta">
                     <p>{formatINR(booking.totalPrice)}</p>
-                    <span className={`profile-status-chip ${booking.status === 'returned' ? 'is-returned' : 'is-booked'}`}>
+                    <span className={`profile-status-chip ${booking.status === 'returned' ? 'is-returned' : booking.status === 'cancelled' ? 'is-cancelled' : 'is-booked'}`}>
                       {booking.status.toUpperCase()}
                     </span>
+                    {canCancelBooking(booking) && (
+                      <button
+                        type="button"
+                        className="btn btn-outline"
+                        style={{ marginTop: '0.75rem', padding: '0.45rem 0.8rem', fontSize: '0.82rem' }}
+                        onClick={() => handleCancelBooking(booking._id)}
+                      >
+                        Cancel Booking
+                      </button>
+                    )}
                   </div>
                 </article>
               ))}

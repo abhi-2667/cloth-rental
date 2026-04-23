@@ -429,8 +429,8 @@ const AdminDashboard = () => {
                   <td>
                     <span style={{ 
                       padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem',
-                      background: b.status === 'returned' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(199, 160, 55, 0.2)',
-                      color: b.status === 'returned' ? 'var(--success)' : 'var(--primary-color)'
+                      background: b.status === 'returned' ? 'rgba(16, 185, 129, 0.2)' : b.status === 'cancelled' ? 'rgba(248, 113, 113, 0.18)' : 'rgba(199, 160, 55, 0.2)',
+                      color: b.status === 'returned' ? 'var(--success)' : b.status === 'cancelled' ? 'var(--danger)' : 'var(--primary-color)'
                     }}>{b.status.toUpperCase()}</span>
                   </td>
                   <td>

@@ -13,6 +13,12 @@ const createUserNotification = async ({ userId, type, title, message, metadata =
   return Notification.create({ userId, type, title, message, metadata });
 };
 
+const getNormalizedToday = () => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
+};
+
 const createBooking = async (req, res) => {
   try {
     const { clothId, startDate, endDate } = req.body;
@@ -172,6 +178,69 @@ const getAllBookings = async (req, res) => {
   }
 };
 
+const cancelBooking = async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+
+    if (useDevStore) {
+      const booking = devStore.getBookingById(bookingId);
+      if (!booking || booking.userId !== req.user.id) {
+        return res.status(404).json({ message: 'Booking not found' });
+      }
+
+      if (booking.status !== 'booked') {
+        return res.status(400).json({ message: 'Only active bookings can be cancelled' });
+      }
+
+      if (new Date(booking.startDate) <= getNormalizedToday()) {
+        return res.status(400).json({ message: 'Bookings can only be cancelled before the rental start date' });
+      }
+
+      const cancelledBooking = devStore.updateBooking(bookingId, { status: 'cancelled' });
+      const cloth = devStore.getClothById(cancelledBooking.clothId);
+
+      await createUserNotification({
+        userId: cancelledBooking.userId,
+        type: 'booking_cancelled',
+        title: 'Booking cancelled',
+        message: `${cloth?.title || 'Your item'} booking for ${new Date(cancelledBooking.startDate).toDateString()} has been cancelled.`,
+        metadata: { bookingId: cancelledBooking._id, clothId: cancelledBooking.clothId },
+      });
+
+      return res.json(cancelledBooking);
+    }
+
+    const booking = await Booking.findOne({ _id: bookingId, userId: req.user.id });
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    if (booking.status !== 'booked') {
+      return res.status(400).json({ message: 'Only active bookings can be cancelled' });
+    }
+
+    if (new Date(booking.startDate) <= getNormalizedToday()) {
+      return res.status(400).json({ message: 'Bookings can only be cancelled before the rental start date' });
+    }
+
+    booking.status = 'cancelled';
+    await booking.save();
+
+    const cloth = await Cloth.findById(booking.clothId).select('title');
+    await createUserNotification({
+      userId: booking.userId,
+      type: 'booking_cancelled',
+      title: 'Booking cancelled',
+      message: `${cloth?.title || 'Your item'} booking for ${new Date(booking.startDate).toDateString()} has been cancelled.`,
+      metadata: { bookingId: booking._id, clothId: booking.clothId },
+    });
+
+    res.json(booking);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 const returnCloth = async (req, res) => {
   try {
     if (useDevStore) {
@@ -211,4 +280,4 @@ const returnCloth = async (req, res) => {
   }
 };
 
-module.exports = { createBooking, getBlockedDatesForCloth, getUserBookings, getAllBookings, returnCloth };
+module.exports = { createBooking, getBlockedDatesForCloth, getUserBookings, getAllBookings, cancelBooking, returnCloth };

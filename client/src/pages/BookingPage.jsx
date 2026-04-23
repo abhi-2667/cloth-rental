@@ -16,8 +16,31 @@ const formatDate = (value) => {
   return new Date(value).toLocaleDateString('en-US', {
     day: '2-digit',
     month: 'short',
-    year: 'numeric'
+    year: 'numeric',
   });
+};
+
+const getDateOffsetISO = (offsetDays) => {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() + offsetDays);
+  return date.toISOString().split('T')[0];
+};
+
+const getNextWeekendRange = () => {
+  const now = new Date();
+  const saturday = new Date(now);
+  saturday.setHours(0, 0, 0, 0);
+  const daysUntilSaturday = (6 - now.getDay() + 7) % 7 || 7;
+  saturday.setDate(now.getDate() + daysUntilSaturday);
+
+  const sunday = new Date(saturday);
+  sunday.setDate(saturday.getDate() + 1);
+
+  return {
+    start: saturday.toISOString().split('T')[0],
+    end: sunday.toISOString().split('T')[0],
+  };
 };
 
 const BookingPage = () => {
@@ -26,7 +49,9 @@ const BookingPage = () => {
   const { user } = useContext(AuthContext);
   const [cloth, setCloth] = useState(null);
   const [startDate, setStartDate] = useState('');
+  const [startTime, setStartTime] = useState('10:00');
   const [endDate, setEndDate] = useState('');
+  const [endTime, setEndTime] = useState('18:00');
   const [blockedRanges, setBlockedRanges] = useState([]);
   const [isLoadingBlockedDates, setIsLoadingBlockedDates] = useState(true);
   const [error, setError] = useState('');
@@ -61,15 +86,31 @@ const BookingPage = () => {
     return blockedStart <= selectedEnd && blockedEnd >= selectedStart;
   });
 
+  const applyQuickRange = (start, end) => {
+    setStartDate(start);
+    setEndDate(end);
+    setError('');
+    setSuccess('');
+  };
+
   const handleBooking = async (e) => {
     e.preventDefault();
     if (!user) {
-      alert("Please login first to book an item"); return;
+      alert('Please login first to book an item'); return;
     }
-    setError(''); setSuccess('');
+    setError('');
+    setSuccess('');
 
-    if (new Date(startDate) >= new Date(endDate)) {
-      setError('End date must be after start date');
+    if (!startDate || !endDate || !startTime || !endTime) {
+      setError('Please select both date and time for start and end.');
+      return;
+    }
+
+    const startDateTime = new Date(`${startDate}T${startTime}`);
+    const endDateTime = new Date(`${endDate}T${endTime}`);
+
+    if (startDateTime >= endDateTime) {
+      setError('End date and time must be after start date and time');
       return;
     }
 
@@ -81,8 +122,8 @@ const BookingPage = () => {
     try {
       await api.post('/bookings', {
         clothId: id,
-        startDate,
-        endDate
+        startDate: `${startDate}T${startTime}:00`,
+        endDate: `${endDate}T${endTime}:00`
       });
       setSuccess('Booking successful! Redirecting to profile...');
       setTimeout(() => navigate('/profile'), 2000);
@@ -94,20 +135,22 @@ const BookingPage = () => {
   if (!cloth) return <div style={{ padding: '4rem', textAlign: 'center' }}>Loading...</div>;
 
   const imageUrl = getClothImageSrc(cloth);
-  const days = startDate && endDate ? Math.max(1, Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24))) : 0;
+  const days = startDate && endDate
+    ? Math.max(1, Math.ceil((new Date(`${endDate}T${endTime}`) - new Date(`${startDate}T${startTime}`)) / (1000 * 60 * 60 * 24)))
+    : 0;
   const total = days * cloth.pricePerDay;
 
   return (
-    <div className="flex" style={{ gap: '3rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
-      <div className="glass" style={{ flex: '1 1 400px', height: '500px', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: '16px', overflow: 'hidden' }}>
-        <img src={imageUrl} alt={cloth.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.src = getClothImageSrc({ title: cloth.title, category: cloth.category }); }} />
+    <div className="flex" style={{ gap: '2rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+      <div className="glass" style={{ flex: '1 1 540px', minWidth: '320px', maxWidth: '720px', aspectRatio: '4 / 3', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: '16px', overflow: 'hidden' }}>
+        <img src={imageUrl} alt={cloth.title} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} onError={(e) => { e.target.src = getClothImageSrc({ title: cloth.title, category: cloth.category }); }} />
       </div>
-      
-      <div style={{ flex: '1 1 400px' }}>
+
+      <div style={{ flex: '0 1 440px', width: '100%', maxWidth: '480px' }}>
         <span style={{ color: 'var(--primary-color)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>{cloth.category}</span>
         <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem', marginTop: '0.5rem' }}>{cloth.title}</h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', marginBottom: '1.5rem', lineHeight: 1.6 }}>{cloth.description}</p>
-        
+
         <div style={{ display: 'flex', gap: '2rem', marginBottom: '2rem' }}>
           <div>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Price (INR)</p>
@@ -115,26 +158,43 @@ const BookingPage = () => {
           </div>
           <div>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Size</p>
-            <p style={{ fontSize: '1.5rem', fontWeight: 600 }}><Tag size={20} style={{ display: 'inline', marginRight: '0.5rem' }}/>{cloth.size}</p>
+            <p style={{ fontSize: '1.5rem', fontWeight: 600 }}><Tag size={20} style={{ display: 'inline', marginRight: '0.5rem' }} />{cloth.size}</p>
           </div>
         </div>
 
         <form className="glass" style={{ padding: '2rem' }} onSubmit={handleBooking}>
           <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Calendar size={20} /> Select Rental Dates
+            <Calendar size={20} /> Select Rental Dates & Time
           </h3>
-          
+
           {error && <div style={{ background: 'var(--danger)', padding: '0.75rem', borderRadius: '8px', marginBottom: '1rem' }}>{error}</div>}
           {success && <div style={{ background: 'var(--success)', padding: '0.75rem', borderRadius: '8px', marginBottom: '1rem' }}>{success}</div>}
-          
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', marginBottom: '1rem' }}>
+            <button type="button" className="btn btn-outline" style={{ padding: '0.45rem 0.8rem', fontSize: '0.82rem' }} onClick={() => applyQuickRange(getDateOffsetISO(1), getDateOffsetISO(4))}>Next 3 Days</button>
+            <button type="button" className="btn btn-outline" style={{ padding: '0.45rem 0.8rem', fontSize: '0.82rem' }} onClick={() => applyQuickRange(getDateOffsetISO(1), getDateOffsetISO(8))}>Next Week</button>
+            <button type="button" className="btn btn-outline" style={{ padding: '0.45rem 0.8rem', fontSize: '0.82rem' }} onClick={() => {
+              const weekend = getNextWeekendRange();
+              applyQuickRange(weekend.start, weekend.end);
+            }}>Weekend</button>
+          </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
             <div className="form-group">
               <label>Start Date</label>
               <input type="date" className="form-control" value={startDate} onChange={e => setStartDate(e.target.value)} required min={new Date().toISOString().split('T')[0]} />
             </div>
             <div className="form-group">
+              <label>Start Time</label>
+              <input type="time" className="form-control" value={startTime} onChange={e => setStartTime(e.target.value)} required />
+            </div>
+            <div className="form-group">
               <label>End Date</label>
               <input type="date" className="form-control" value={endDate} onChange={e => setEndDate(e.target.value)} required min={startDate || new Date().toISOString().split('T')[0]} />
+            </div>
+            <div className="form-group">
+              <label>End Time</label>
+              <input type="time" className="form-control" value={endTime} onChange={e => setEndTime(e.target.value)} required />
             </div>
           </div>
 
@@ -169,7 +229,7 @@ const BookingPage = () => {
           <button type="submit" className="btn btn-primary w-full" disabled={!cloth.availability || selectedRangeOverlaps}>
             {cloth.availability ? 'Confirm Booking' : 'Currently Unavailable'}
           </button>
-          
+
           <p style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.9rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
             <ShieldCheck size={16} /> Secure reservation & payment
           </p>
