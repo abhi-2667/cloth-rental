@@ -1,7 +1,6 @@
 import axios from 'axios';
 
-const configuredBaseUrl = String(import.meta.env.VITE_API_BASE_URL || '').trim();
-const baseURL = configuredBaseUrl || '/api';
+const baseURL = import.meta.env.VITE_API_BASE_URL || 'https://luxe-rentals.onrender.com/api';
 
 const api = axios.create({
   baseURL,
