@@ -710,11 +710,10 @@ input[type="date"].form-control {
 
 .catalog-card-img-wrap {
   position: relative;
-  height: 290px;
+  height: 360px;
   overflow: hidden;
   background: rgba(0, 0, 0, 0.2);
 }
-
 .catalog-card-content {
   padding: 1.25rem 1.25rem 1.35rem;
   display: flex;
@@ -765,6 +764,8 @@ input[type="date"].form-control {
 
 .catalog-card-image {
   transition: transform 0.45s ease !important;
+  object-fit: cover;
+  object-position: center top;   /* ← add this line */
 }
 
 .catalog-card:hover .catalog-card-image {
