@@ -705,85 +705,24 @@ input[type="date"].form-control {
 
 .catalog-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(212, 175, 55, 0.2);
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(212, 175, 55, 0.2);
 }
 
 .catalog-card-img-wrap {
   position: relative;
-  height: 360px;
+  height: 290px;
   overflow: hidden;
   background: rgba(0, 0, 0, 0.2);
-}
-.catalog-card-content {
-  padding: 1.25rem 1.25rem 1.35rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
-  flex-grow: 1;
-}
-
-.catalog-card-title {
-  font-size: 1.15rem;
-  margin-bottom: 0.35rem;
-  letter-spacing: -0.01em;
-  line-height: 1.25;
-}
-
-.catalog-card-desc {
-  color: var(--text-muted);
-  font-size: 0.9rem;
-  line-height: 1.6;
-  min-height: 3.2em;
-}
-
-.catalog-card-meta-row {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.catalog-price-row {
-  margin-top: auto;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.8rem;
-}
-
-.catalog-price {
-  font-size: 1.15rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-
-.catalog-price-unit {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  font-weight: 500;
 }
 
 .catalog-card-image {
   transition: transform 0.45s ease !important;
-  object-fit: cover;
-  object-position: center top;   /* ← add this line */
 }
 
 .catalog-card:hover .catalog-card-image {
   transform: scale(1.06);
-}
-
-.catalog-card-img-wrap::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(5, 8, 14, 0) 0%, rgba(5, 8, 14, 0.22) 100%);
-  opacity: 0.8;
-  transition: opacity 0.25s ease;
-  pointer-events: none;
-}
-
-.catalog-card:hover .catalog-card-img-wrap::after {
-  opacity: 1;
 }
 
 .catalog-card-badges {
@@ -793,12 +732,6 @@ input[type="date"].form-control {
   display: flex;
   gap: 0.4rem;
   flex-wrap: wrap;
-}
-
-.catalog-card-img-wrap img {
-  object-fit: contain !important;
-  object-position: center center !important;
-  background: #111 !important;
 }
 
 .catalog-badge {
@@ -827,45 +760,36 @@ input[type="date"].form-control {
 
 .catalog-card-overlay {
   position: absolute;
-  inset: auto 0 0 0;
-  padding: 0.9rem;
+  inset: 0;
+  background: rgba(0, 0, 0, 0);
   display: flex;
-  justify-content: flex-start;
-  align-items: flex-end;
-  z-index: 2;
-  pointer-events: none;
-}
-
-.catalog-image-cta {
-  display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  padding: 0.52rem 0.9rem;
-  border-radius: 999px;
-  background: rgba(12, 16, 27, 0.82);
-  border: 1px solid rgba(212, 175, 55, 0.45);
-  color: #f8e9be;
-  font-size: 0.84rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  transform: translateY(8px);
-  opacity: 0;
-  pointer-events: auto;
-  transition: opacity 0.24s ease, transform 0.24s ease, border-color 0.24s ease, background 0.24s ease;
+  justify-content: center;
+  transition: background 0.3s ease;
 }
 
-.catalog-card:hover .catalog-image-cta {
+.catalog-card:hover .catalog-card-overlay {
+  background: rgba(0, 0, 0, 0.38);
+}
+
+.catalog-overlay-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  background: rgba(212, 175, 55, 0.9);
+  color: #1a2638;
+  font-weight: 700;
+  font-size: 0.88rem;
+  border-radius: 999px;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.catalog-card:hover .catalog-overlay-btn {
   opacity: 1;
   transform: translateY(0);
-}
-
-.catalog-image-cta:hover {
-  background: rgba(212, 175, 55, 0.92);
-  border-color: rgba(212, 175, 55, 0.9);
-  color: #1a2638;
 }
 
 .catalog-avail-badge {
