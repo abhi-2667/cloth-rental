@@ -718,6 +718,10 @@ input[type="date"].form-control {
 }
 
 .catalog-card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
   transition: transform 0.45s ease !important;
 }
 
@@ -3816,6 +3820,7 @@ input[type="date"].form-control {
   .catalog-card-img-wrap {
     height: 220px;
   }
+
 }
 
 @media (hover: none) {
