@@ -704,5 +704,6 @@ module.exports = {
   requestSignupLink,
   verifySignupLink,
   requestLoginLink,
+  verifyLoginOtp,
   verifyLoginLink,
 };

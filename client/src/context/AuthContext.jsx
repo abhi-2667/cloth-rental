@@ -7,6 +7,15 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const applyAuthSession = useCallback((session) => {
+    if (!session?.token || !session?.user) {
+      return;
+    }
+
+    localStorage.setItem('token', session.token);
+    setUser(session.user);
+  }, []);
+
   useEffect(() => {
     // Check if user is logged in
     const checkAuthStatus = async () => {
@@ -36,10 +45,9 @@ export const AuthProvider = ({ children }) => {
       );
     }
 
-    localStorage.setItem('token', res.data.token);
-    setUser(res.data.user);
+    applyAuthSession(res.data);
     return res.data;
-  }, []);
+  }, [applyAuthSession]);
 
   const register = useCallback(async (name, email, password) => {
     const res = await api.post('/auth/register', { name, email, password });
@@ -63,8 +71,9 @@ export const AuthProvider = ({ children }) => {
     register,
     updateProfile,
     logout,
+    applyAuthSession,
     loading,
-  }), [user, login, register, updateProfile, logout, loading]);
+  }), [user, login, register, updateProfile, logout, applyAuthSession, loading]);
 
   return (
     <AuthContext.Provider value={contextValue}>

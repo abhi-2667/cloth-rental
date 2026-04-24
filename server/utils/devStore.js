@@ -5,6 +5,8 @@ const state = {
   users: [],
   clothes: [],
   bookings: [],
+  wishlistItems: [],
+  reviews: [],
   notifications: [],
   pendingSignups: [],
   magicLinkSessions: [],
@@ -474,11 +476,12 @@ const getUnavailableClothIdsForRange = (startDate, endDate) => {
     .map((booking) => booking.clothId);
 };
 
-const listClothes = ({ category, occasion, gender, availability, size, minPrice, maxPrice, startDate, endDate } = {}) => {
+const listClothes = ({ category, occasion, gender, availability, size, minPrice, maxPrice, startDate, endDate, search } = {}) => {
   const unavailableIds = startDate && endDate ? new Set(getUnavailableClothIdsForRange(startDate, endDate)) : null;
   const normalizedOccasion = String(occasion || category || '').toLowerCase();
   const normalizedGender = String(gender || '').toLowerCase();
   const normalizedAvailability = availability === 'true' ? true : availability === 'false' ? false : null;
+  const normalizedSearch = String(search || '').trim().toLowerCase();
 
   return state.clothes.filter((cloth) => {
     if (normalizedOccasion && String(cloth.occasion || cloth.category).toLowerCase() !== normalizedOccasion) return false;
@@ -488,6 +491,12 @@ const listClothes = ({ category, occasion, gender, availability, size, minPrice,
     if (minPrice !== undefined && minPrice !== '' && cloth.pricePerDay < Number(minPrice)) return false;
     if (maxPrice !== undefined && maxPrice !== '' && cloth.pricePerDay > Number(maxPrice)) return false;
     if (unavailableIds && unavailableIds.has(cloth._id)) return false;
+    if (normalizedSearch) {
+      const haystack = [cloth.title, cloth.description, cloth.category]
+        .map((value) => String(value || '').toLowerCase())
+        .join(' ');
+      if (!haystack.includes(normalizedSearch)) return false;
+    }
     return true;
   }).map(clone);
 };
@@ -590,6 +599,32 @@ const updateUser = (userId, fields) => {
   return clone(user);
 };
 
+const deleteUserAccount = (userId) => {
+  const normalizedUserId = String(userId);
+  const userIndex = state.users.findIndex((item) => item._id === normalizedUserId);
+  if (userIndex === -1) {
+    return { ok: false, reason: 'not_found' };
+  }
+
+  const user = state.users[userIndex];
+  const approvalStatus = user.approvalStatus || 'approved';
+  if (user.role === 'admin' && approvalStatus === 'approved' && countAdmins() <= 1) {
+    return { ok: false, reason: 'last_admin' };
+  }
+
+  state.bookings = state.bookings.filter((booking) => booking.userId !== normalizedUserId);
+  state.notifications = state.notifications.filter((notification) => notification.userId !== normalizedUserId);
+  state.wishlistItems = state.wishlistItems.filter((item) => item.userId !== normalizedUserId);
+  state.reviews = state.reviews.filter((review) => review.userId !== normalizedUserId);
+
+  const normalizedEmail = String(user.email || '').toLowerCase();
+  state.pendingSignups = state.pendingSignups.filter((item) => item.email.toLowerCase() !== normalizedEmail);
+  state.magicLinkSessions = state.magicLinkSessions.filter((item) => item.email.toLowerCase() !== normalizedEmail);
+
+  const [removedUser] = state.users.splice(userIndex, 1);
+  return { ok: true, user: clone(removedUser) };
+};
+
 const countApprovedUsers = () => state.users.filter((user) => (user.approvalStatus || 'approved') === 'approved').length;
 
 const createBooking = (data) => {
@@ -668,6 +703,88 @@ const listBookings = ({ userId, clothId, status, includeCloth = false, includeUs
 };
 
 const getAllBookings = () => listBookings({ includeCloth: true, includeUser: true });
+
+const listWishlistItems = (userId) => {
+  return state.wishlistItems
+    .filter((item) => item.userId === String(userId))
+    .map((item) => ({
+      ...clone(item),
+      clothId: getClothById(item.clothId),
+    }))
+    .filter((item) => Boolean(item.clothId));
+};
+
+const getWishlistItem = ({ userId, clothId }) => {
+  const record = state.wishlistItems.find(
+    (item) => item.userId === String(userId) && item.clothId === String(clothId)
+  );
+
+  return record ? clone(record) : null;
+};
+
+const addWishlistItem = ({ userId, clothId }) => {
+  const existing = getWishlistItem({ userId, clothId });
+  if (existing) return existing;
+
+  const wishlistItem = {
+    _id: createId(),
+    userId: String(userId),
+    clothId: String(clothId),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  state.wishlistItems.push(wishlistItem);
+  return clone(wishlistItem);
+};
+
+const removeWishlistItem = ({ userId, clothId }) => {
+  const index = state.wishlistItems.findIndex(
+    (item) => item.userId === String(userId) && item.clothId === String(clothId)
+  );
+
+  if (index === -1) return null;
+  const [removed] = state.wishlistItems.splice(index, 1);
+  return clone(removed);
+};
+
+const addReview = ({ userId, clothId, rating, comment }) => {
+  const review = {
+    _id: createId(),
+    userId: String(userId),
+    clothId: String(clothId),
+    rating: Number(rating),
+    comment: String(comment || '').trim(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  state.reviews.push(review);
+  return clone(review);
+};
+
+const listReviewsForCloth = (clothId) => {
+  return state.reviews
+    .filter((review) => review.clothId === String(clothId))
+    .sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt))
+    .map((review) => {
+      const user = getUserById(review.userId);
+      return {
+        ...clone(review),
+        userId: user ? { _id: user._id, name: user.name, email: user.email } : review.userId,
+      };
+    });
+};
+
+const deleteReview = ({ reviewId, userId }) => {
+  const index = state.reviews.findIndex(
+    (review) => review._id === String(reviewId) && review.userId === String(userId)
+  );
+
+  if (index === -1) return null;
+  const [removed] = state.reviews.splice(index, 1);
+  return clone(removed);
+};
 
 const upsertPendingSignup = ({ name, email, password, linkExpiresAt }) => {
   const normalizedEmail = String(email).toLowerCase();
@@ -801,6 +918,7 @@ module.exports = {
   countAdmins,
   addUser,
   updateUser,
+  deleteUserAccount,
   createBooking,
   getBookingById,
   updateBooking,
@@ -809,6 +927,13 @@ module.exports = {
   listBookings,
   getAllBookings,
   getUnavailableClothIdsForRange,
+  listWishlistItems,
+  getWishlistItem,
+  addWishlistItem,
+  removeWishlistItem,
+  addReview,
+  listReviewsForCloth,
+  deleteReview,
   upsertPendingSignup,
   getPendingSignupByEmail,
   deletePendingSignup,

@@ -1,10 +1,13 @@
-import { useState, useEffect, useContext } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { lazy, Suspense, useMemo, useState, useEffect, useContext, useRef } from 'react';
+import { Link, useParams, useNavigate } from 'react-router-dom';
+import 'react-day-picker/dist/style.css';
 import { AuthContext } from '../context/AuthContext';
 import api from '../utils/api';
-import { Calendar, Tag, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Calendar, ChevronDown, Clock3 } from 'lucide-react';
 import { getClothImageSrc } from '../utils/visuals';
 import { formatINR } from '../utils/currency';
+
+const DayPicker = lazy(() => import('react-day-picker').then((mod) => ({ default: mod.DayPicker })));
 
 const toDateOnly = (value) => {
   const date = new Date(value);
@@ -12,86 +15,117 @@ const toDateOnly = (value) => {
   return date;
 };
 
-const formatDate = (value) => {
-  return new Date(value).toLocaleDateString('en-US', {
-    day: '2-digit',
+const toCalendarRange = (range) => {
+  const from = toDateOnly(range.startDate);
+  const to = toDateOnly(range.endDate);
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return null;
+  return { from, to };
+};
+
+const formatDisplayDate = (value) => {
+  if (!value) return '';
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return '';
+
+  return new Intl.DateTimeFormat('en-US', {
+    weekday: 'short',
     month: 'short',
-    year: 'numeric',
-  });
-};
-
-const getDateOffsetISO = (offsetDays) => {
-  const date = new Date();
-  date.setHours(0, 0, 0, 0);
-  date.setDate(date.getDate() + offsetDays);
-  return date.toISOString().split('T')[0];
-};
-
-const getNextWeekendRange = () => {
-  const now = new Date();
-  const saturday = new Date(now);
-  saturday.setHours(0, 0, 0, 0);
-  const daysUntilSaturday = (6 - now.getDay() + 7) % 7 || 7;
-  saturday.setDate(now.getDate() + daysUntilSaturday);
-
-  const sunday = new Date(saturday);
-  sunday.setDate(saturday.getDate() + 1);
-
-  return {
-    start: saturday.toISOString().split('T')[0],
-    end: sunday.toISOString().split('T')[0],
-  };
+    day: 'numeric'
+  }).format(date);
 };
 
 const BookingPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
+  const calendarPopoverRef = useRef(null);
   const [cloth, setCloth] = useState(null);
   const [startDate, setStartDate] = useState('');
-  const [startTime, setStartTime] = useState('10:00');
   const [endDate, setEndDate] = useState('');
+  const [startTime, setStartTime] = useState('10:00');
   const [endTime, setEndTime] = useState('18:00');
   const [blockedRanges, setBlockedRanges] = useState([]);
+  const [isLoadingCloth, setIsLoadingCloth] = useState(true);
   const [isLoadingBlockedDates, setIsLoadingBlockedDates] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   useEffect(() => {
-    const fetchBookingContext = async () => {
+    const fetchCloth = async () => {
       try {
-        const [clothRes, blockedRes] = await Promise.all([
-          api.get(`/clothes/${id}`),
-          api.get(`/bookings/cloth/${id}/blocked`)
-        ]);
-
+        const clothRes = await api.get(`/clothes/${id}`);
         setCloth(clothRes.data);
-        setBlockedRanges(blockedRes.data || []);
       } catch (err) {
         setError('Failed to load item.');
+      } finally {
+        setIsLoadingCloth(false);
+      }
+    };
+
+    const fetchBlockedRanges = async () => {
+      try {
+        const blockedRes = await api.get(`/bookings/cloth/${id}/blocked`);
+        setBlockedRanges(blockedRes.data || []);
+      } catch (err) {
+        setError('Failed to load unavailable dates.');
       } finally {
         setIsLoadingBlockedDates(false);
       }
     };
 
-    fetchBookingContext();
+    fetchCloth();
+    fetchBlockedRanges();
   }, [id]);
 
-  const selectedRangeOverlaps = startDate && endDate && blockedRanges.some((range) => {
+  useEffect(() => {
+    const handlePointerDown = (event) => {
+      if (calendarPopoverRef.current && !calendarPopoverRef.current.contains(event.target)) {
+        setIsCalendarOpen(false);
+      }
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setIsCalendarOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, []);
+
+  const selectedRangeOverlaps = useMemo(() => {
+    if (!startDate || !endDate) return false;
+
     const selectedStart = toDateOnly(startDate);
     const selectedEnd = toDateOnly(endDate);
-    const blockedStart = toDateOnly(range.startDate);
-    const blockedEnd = toDateOnly(range.endDate);
 
-    return blockedStart <= selectedEnd && blockedEnd >= selectedStart;
-  });
+    return blockedRanges.some((range) => {
+      const blockedStart = toDateOnly(range.startDate);
+      const blockedEnd = toDateOnly(range.endDate);
 
-  const applyQuickRange = (start, end) => {
-    setStartDate(start);
-    setEndDate(end);
-    setError('');
-    setSuccess('');
-  };
+      return blockedStart <= selectedEnd && blockedEnd >= selectedStart;
+    });
+  }, [startDate, endDate, blockedRanges]);
+
+  const today = toDateOnly(new Date());
+  const blockedCalendarRanges = blockedRanges
+    .map(toCalendarRange)
+    .filter(Boolean);
+  const selectedRange = startDate && endDate
+    ? { from: toDateOnly(startDate), to: toDateOnly(endDate) }
+    : undefined;
+  const days = startDate && endDate
+    ? Math.max(1, Math.ceil((toDateOnly(endDate) - toDateOnly(startDate)) / (1000 * 60 * 60 * 24)))
+    : 0;
+  const startDateLabel = formatDisplayDate(startDate) || 'Select date';
+  const endDateLabel = formatDisplayDate(endDate) || 'Select date';
 
   const handleBooking = async (e) => {
     e.preventDefault();
@@ -101,16 +135,8 @@ const BookingPage = () => {
     setError('');
     setSuccess('');
 
-    if (!startDate || !endDate || !startTime || !endTime) {
-      setError('Please select both date and time for start and end.');
-      return;
-    }
-
-    const startDateTime = new Date(`${startDate}T${startTime}`);
-    const endDateTime = new Date(`${endDate}T${endTime}`);
-
-    if (startDateTime >= endDateTime) {
-      setError('End date and time must be after start date and time');
+    if (!startDate || !endDate || days === 0) {
+      setError('Please select both start and end dates.');
       return;
     }
 
@@ -132,109 +158,165 @@ const BookingPage = () => {
     }
   };
 
-  if (!cloth) return <div style={{ padding: '4rem', textAlign: 'center' }}>Loading...</div>;
+  if (isLoadingCloth || !cloth) return <div style={{ padding: '4rem', textAlign: 'center' }}>Loading...</div>;
 
   const imageUrl = getClothImageSrc(cloth);
-  const days = startDate && endDate
-    ? Math.max(1, Math.ceil((new Date(`${endDate}T${endTime}`) - new Date(`${startDate}T${startTime}`)) / (1000 * 60 * 60 * 24)))
-    : 0;
   const total = days * cloth.pricePerDay;
+  const canConfirm = !!startDate && !!endDate && days > 0 && !selectedRangeOverlaps && cloth.availability;
 
   return (
-    <div className="flex" style={{ gap: '2rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
-      <div className="glass" style={{ flex: '1 1 540px', minWidth: '320px', maxWidth: '720px', aspectRatio: '4 / 3', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: '16px', overflow: 'hidden' }}>
-        <img src={imageUrl} alt={cloth.title} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} onError={(e) => { e.target.src = getClothImageSrc({ title: cloth.title, category: cloth.category }); }} />
-      </div>
+    <div className="booking-page">
+      <Link to="/browse" style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', marginBottom: '1rem' }}>
+        <ArrowLeft size={14} /> Back to Browse
+      </Link>
 
-      <div style={{ flex: '0 1 440px', width: '100%', maxWidth: '480px' }}>
-        <span style={{ color: 'var(--primary-color)', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>{cloth.category}</span>
-        <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem', marginTop: '0.5rem' }}>{cloth.title}</h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', marginBottom: '1.5rem', lineHeight: 1.6 }}>{cloth.description}</p>
-
-        <div style={{ display: 'flex', gap: '2rem', marginBottom: '2rem' }}>
-          <div>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Price (INR)</p>
-            <p style={{ fontSize: '1.5rem', fontWeight: 600 }}>{formatINR(cloth.pricePerDay)}<span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>/day</span></p>
-          </div>
-          <div>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Size</p>
-            <p style={{ fontSize: '1.5rem', fontWeight: 600 }}><Tag size={20} style={{ display: 'inline', marginRight: '0.5rem' }} />{cloth.size}</p>
+      <section className="booking-layout">
+        <div className="glass booking-media-card booking-column-surface">
+          <img
+            src={imageUrl}
+            alt={cloth.title}
+            className="booking-media-image"
+            onError={(e) => { e.target.src = getClothImageSrc({ title: cloth.title, category: cloth.category }); }}
+          />
+          <div className="booking-media-footer">
+            <span className="booking-media-caption">Premium rental look</span>
+            <Link to="/browse" className="booking-media-link">
+              View details <ChevronDown size={14} />
+            </Link>
           </div>
         </div>
 
-        <form className="glass" style={{ padding: '2rem' }} onSubmit={handleBooking}>
-          <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Calendar size={20} /> Select Rental Dates & Time
-          </h3>
-
-          {error && <div style={{ background: 'var(--danger)', padding: '0.75rem', borderRadius: '8px', marginBottom: '1rem' }}>{error}</div>}
-          {success && <div style={{ background: 'var(--success)', padding: '0.75rem', borderRadius: '8px', marginBottom: '1rem' }}>{success}</div>}
-
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', marginBottom: '1rem' }}>
-            <button type="button" className="btn btn-outline" style={{ padding: '0.45rem 0.8rem', fontSize: '0.82rem' }} onClick={() => applyQuickRange(getDateOffsetISO(1), getDateOffsetISO(4))}>Next 3 Days</button>
-            <button type="button" className="btn btn-outline" style={{ padding: '0.45rem 0.8rem', fontSize: '0.82rem' }} onClick={() => applyQuickRange(getDateOffsetISO(1), getDateOffsetISO(8))}>Next Week</button>
-            <button type="button" className="btn btn-outline" style={{ padding: '0.45rem 0.8rem', fontSize: '0.82rem' }} onClick={() => {
-              const weekend = getNextWeekendRange();
-              applyQuickRange(weekend.start, weekend.end);
-            }}>Weekend</button>
+        <aside className="glass booking-panel booking-column-surface">
+          <div className="booking-header">
+            <h1 className="booking-title">{cloth.title}</h1>
+            <div className="booking-price-line">
+              <strong>{formatINR(cloth.pricePerDay)}</strong>
+              <span>/ day</span>
+            </div>
+            <p className="booking-subtitle">{cloth.description}</p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-            <div className="form-group">
-              <label>Start Date</label>
-              <input type="date" className="form-control" value={startDate} onChange={e => setStartDate(e.target.value)} required min={new Date().toISOString().split('T')[0]} />
-            </div>
-            <div className="form-group">
-              <label>Start Time</label>
-              <input type="time" className="form-control" value={startTime} onChange={e => setStartTime(e.target.value)} required />
-            </div>
-            <div className="form-group">
-              <label>End Date</label>
-              <input type="date" className="form-control" value={endDate} onChange={e => setEndDate(e.target.value)} required min={startDate || new Date().toISOString().split('T')[0]} />
-            </div>
-            <div className="form-group">
-              <label>End Time</label>
-              <input type="time" className="form-control" value={endTime} onChange={e => setEndTime(e.target.value)} required />
-            </div>
-          </div>
+            <p className="booking-subtitle booking-subtitle-tight">{cloth.occasion || cloth.category}</p>
 
-          <div style={{ marginBottom: '1.5rem' }}>
-            <p style={{ marginBottom: '0.5rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Availability Calendar (Booked Ranges)</p>
-            {isLoadingBlockedDates ? (
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Loading unavailable dates...</p>
-            ) : blockedRanges.length === 0 ? (
-              <p style={{ color: 'var(--success)', fontSize: '0.9rem' }}>No blocked dates. Fully available.</p>
-            ) : (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                {blockedRanges.map((range, index) => (
-                  <span key={`${range.startDate}-${range.endDate}-${index}`} style={{ fontSize: '0.8rem', background: 'rgba(255, 59, 48, 0.15)', color: '#ffd5d0', padding: '0.35rem 0.55rem', borderRadius: '999px', border: '1px solid rgba(255, 59, 48, 0.4)' }}>
-                    {formatDate(range.startDate)} - {formatDate(range.endDate)}
-                  </span>
-                ))}
+            <form className="booking-form" onSubmit={handleBooking}>
+              <div className="booking-form-header">
+                <div className="booking-form-title-row">
+                  <div className={`booking-status-dot ${cloth.availability ? 'is-live' : 'is-offline'}`} />
+                  <Calendar size={18} />
+                  <span>Calendar</span>
+                </div>
+                <p>Choose dates, times, and confirm when ready.</p>
               </div>
-            )}
 
-            {selectedRangeOverlaps && (
-              <p style={{ color: '#ffb4ab', marginTop: '0.6rem', fontSize: '0.85rem' }}>
-                The selected date range is unavailable.
-              </p>
-            )}
-          </div>
+              {error && <div className="booking-alert booking-alert-error">{error}</div>}
+              {success && <div className="booking-alert booking-alert-success">{success}</div>}
 
-          <div style={{ borderTop: '1px solid var(--glass-border)', margin: '1.5rem 0', paddingTop: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>Total for {days} day(s)</span>
-            <span style={{ fontSize: '1.5rem', fontWeight: 700 }}>{formatINR(total || 0)}</span>
-          </div>
+              <div className="booking-stack booking-datetime-stack" ref={calendarPopoverRef}>
+                <div className="booking-datetime-row">
+                  <div className="booking-datetime-label">Start</div>
+                  <div className="booking-datetime-fields">
+                    <div className="booking-date-popover">
+                      <button
+                        type="button"
+                        className="form-control booking-date-trigger"
+                        onClick={() => setIsCalendarOpen((current) => !current)}
+                        aria-expanded={isCalendarOpen}
+                        aria-haspopup="dialog"
+                      >
+                        <span>{startDateLabel}</span>
+                        <ChevronDown size={14} />
+                      </button>
 
-          <button type="submit" className="btn btn-primary w-full" disabled={!cloth.availability || selectedRangeOverlaps}>
-            {cloth.availability ? 'Confirm Booking' : 'Currently Unavailable'}
-          </button>
+                      {isCalendarOpen && (
+                        <div className="booking-calendar-popover">
+                          <div className="booking-calendar-shell">
+                            <Suspense fallback={<p className="booking-calendar-loading">Loading calendar...</p>}>
+                              <DayPicker
+                                className="booking-day-picker"
+                                mode="range"
+                                numberOfMonths={1}
+                                selected={selectedRange}
+                                onSelect={(range) => {
+                                  setStartDate(range?.from ? range.from.toISOString().split('T')[0] : '');
+                                  setEndDate(range?.to ? range.to.toISOString().split('T')[0] : '');
+                                  setError('');
+                                  setSuccess('');
+                                  if (range?.from && range?.to) {
+                                    setIsCalendarOpen(false);
+                                  }
+                                }}
+                                disabled={[{ before: today }, ...blockedCalendarRanges]}
+                                modifiers={{ booked: blockedCalendarRanges }}
+                                modifiersClassNames={{ booked: 'rdp-day_booked' }}
+                              />
+                            </Suspense>
+                          </div>
+                        </div>
+                      )}
+                    </div>
 
-          <p style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.9rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-            <ShieldCheck size={16} /> Secure reservation & payment
-          </p>
-        </form>
-      </div>
+                    <label className="booking-time-field">
+                      <span className="booking-sr-label">Start time</span>
+                      <Clock3 size={14} />
+                      <input
+                        type="time"
+                        className="form-control booking-time-input"
+                        value={startTime}
+                        onChange={(event) => setStartTime(event.target.value)}
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="booking-datetime-row">
+                  <div className="booking-datetime-label">End</div>
+                  <div className="booking-datetime-fields">
+                    <button
+                      type="button"
+                      className="form-control booking-date-trigger booking-date-trigger-static"
+                      onClick={() => setIsCalendarOpen((current) => !current)}
+                      aria-expanded={isCalendarOpen}
+                      aria-haspopup="dialog"
+                    >
+                      <span>{endDateLabel}</span>
+                      <ChevronDown size={14} />
+                    </button>
+
+                    <label className="booking-time-field">
+                      <span className="booking-sr-label">End time</span>
+                      <Clock3 size={14} />
+                      <input
+                        type="time"
+                        className="form-control booking-time-input"
+                        value={endTime}
+                        onChange={(event) => setEndTime(event.target.value)}
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {selectedRangeOverlaps && (
+                <p className="booking-inline-note booking-inline-note-warning">
+                  The selected date range is unavailable.
+                </p>
+              )}
+
+              <div className="booking-total-row">
+                <span>Total</span>
+                <strong>{formatINR(total || 0)}</strong>
+              </div>
+
+              <button
+                type="submit"
+                className="btn btn-primary w-full booking-submit-btn"
+                disabled={!canConfirm}
+              >
+                {cloth.availability ? 'Confirm Booking' : 'Currently Unavailable'}
+              </button>
+            </form>
+        </aside>
+      </section>
     </div>
   );
 };

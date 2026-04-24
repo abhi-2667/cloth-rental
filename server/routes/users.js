@@ -3,6 +3,8 @@ const router = express.Router();
 const User = require('../models/User');
 const Booking = require('../models/Booking');
 const Notification = require('../models/Notification');
+const Wishlist = require('../models/Wishlist');
+const Review = require('../models/Review');
 const bcrypt = require('bcrypt');
 const { protect, admin, approvedAccount } = require('../middleware/authMiddleware');
 const devStore = require('../utils/devStore');
@@ -241,6 +243,73 @@ router.put('/profile', protect, approvedAccount, validateProfileUpdatePayload, a
       return res.status(400).json({ message: 'Email already in use' });
     }
     res.status(500).json({ message: error.message });
+  }
+});
+
+router.delete('/profile', protect, approvedAccount, async (req, res) => {
+  try {
+    const { password } = req.body || {};
+
+    if (!password || String(password).length === 0) {
+      return res.status(400).json({ message: 'Password is required to delete account' });
+    }
+
+    if (useDevStore) {
+      const user = devStore.getUserById(req.user.id);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      const isPasswordValid = await bcrypt.compare(String(password), String(user.password || ''));
+      if (!isPasswordValid) {
+        return res.status(401).json({ message: 'Incorrect password' });
+      }
+
+      const deletion = devStore.deleteUserAccount(req.user.id);
+      if (!deletion.ok) {
+        if (deletion.reason === 'last_admin') {
+          return res.status(400).json({ message: 'At least one approved admin account is required' });
+        }
+
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      return res.json({ message: 'Account deleted successfully' });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const isPasswordValid = await bcrypt.compare(String(password), String(user.password || ''));
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: 'Incorrect password' });
+    }
+
+    const approvalStatus = user.approvalStatus || 'approved';
+    if (user.role === 'admin' && approvalStatus === 'approved') {
+      const approvedAdminCount = await User.countDocuments({
+        role: 'admin',
+        $or: [{ approvalStatus: { $exists: false } }, { approvalStatus: 'approved' }],
+      });
+
+      if (approvedAdminCount <= 1) {
+        return res.status(400).json({ message: 'At least one approved admin account is required' });
+      }
+    }
+
+    await Promise.all([
+      Booking.deleteMany({ userId: user._id }),
+      Notification.deleteMany({ userId: user._id }),
+      Wishlist.deleteMany({ userId: user._id }),
+      Review.deleteMany({ userId: user._id }),
+      User.deleteOne({ _id: user._id }),
+    ]);
+
+    return res.json({ message: 'Account deleted successfully' });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
   }
 });
 

@@ -23,7 +23,7 @@ const Navbar = () => {
       borderTop: 'none',
       borderLeft: 'none',
       borderRight: 'none',
-      padding: '0.85rem 0'
+      padding: '0.35rem 0'
     }}>
       <div className="container flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2" style={{ fontSize: '1.45rem', fontWeight: 'bold', letterSpacing: '-0.02em' }}>
@@ -78,7 +78,6 @@ const Navbar = () => {
           ) : (
             <>
               <Link to="/signin" className="btn btn-primary">Sign In</Link>
-              <Link to="/admin/signin" className="btn btn-outline" style={{ padding: '0.5rem 1rem' }}>Admin</Link>
             </>
           )}
         </div>

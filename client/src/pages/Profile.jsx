@@ -2,15 +2,16 @@ import { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
-import { Clock3, UserCircle2, Wallet, BadgeCheck, ShieldCheck, CheckCircle2, Sparkles } from 'lucide-react';
+import { Clock3, UserCircle2, Wallet, BadgeCheck, CheckCircle2, Sparkles, Star, ShoppingBag } from 'lucide-react';
 import { getClothImageSrc } from '../utils/visuals';
 import { formatINR } from '../utils/currency';
 
 const Profile = () => {
-  const { user, updateProfile } = useContext(AuthContext);
+  const { user, updateProfile, logout } = useContext(AuthContext);
   const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -20,6 +21,7 @@ const Profile = () => {
   const [passwordError, setPasswordError] = useState('');
   const [passwordInfo, setPasswordInfo] = useState('');
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [editView, setEditView] = useState('profile');
   const [bookingFilter, setBookingFilter] = useState('all');
 
   const formatDateRange = (startDate, endDate) => {
@@ -33,6 +35,7 @@ const Profile = () => {
       navigate('/');
       return;
     }
+    setName(user.name || '');
     setEmail(user.email || '');
     const fetchBookings = async () => {
       try {
@@ -75,7 +78,13 @@ const Profile = () => {
     setProfileError('');
     setProfileInfo('');
 
+    const normalizedName = name.trim();
     const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedName || normalizedName.length < 2) {
+      setProfileError('Name must be at least 2 characters long.');
+      return;
+    }
+
     if (!normalizedEmail) {
       setProfileError('Email is required.');
       return;
@@ -84,8 +93,8 @@ const Profile = () => {
     setIsUpdatingProfile(true);
 
     try {
-      await updateProfile({ email: normalizedEmail });
-      setProfileInfo('Email updated successfully.');
+      await updateProfile({ name: normalizedName, email: normalizedEmail });
+      setProfileInfo('Profile updated successfully.');
     } catch (err) {
       setProfileError(err?.response?.data?.message || 'Unable to update email right now.');
     } finally {
@@ -192,7 +201,7 @@ const Profile = () => {
 
         <article
           className="glass profile-stat-card"
-          style={{ '--stat-color': 'var(--danger)', '--stat-bg': 'rgba(248, 113, 113, 0.14)' }}
+          style={{ '--stat-color': 'var(--danger)', '--stat-bg': 'rgba(248, 113, 113, 0.14)', opacity: cancelledBookings === 0 ? 0.4 : 1 }}
         >
           <span className="profile-stat-icon"><CheckCircle2 size={18} /></span>
           <p className="profile-stat-label">Cancelled</p>
@@ -202,85 +211,120 @@ const Profile = () => {
 
       <section className="profile-main-grid">
         <div className="glass profile-password-card">
-          <h2><UserCircle2 size={20} /> Account Details</h2>
-          <p className="profile-card-subtitle">Keep your contact email up to date for booking alerts and receipts.</p>
+          <h2><UserCircle2 size={20} /> Edit Options</h2>
+          <p className="profile-card-subtitle">Choose what you want to update.</p>
 
-          {profileError && (
-            <div className="profile-msg profile-msg-error">
-              {profileError}
-            </div>
-          )}
-
-          {profileInfo && (
-            <div className="profile-msg profile-msg-success">
-              {profileInfo}
-            </div>
-          )}
-
-          <form onSubmit={handleUpdateProfile} className="profile-password-form" style={{ marginBottom: '2rem' }}>
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label>Email Address</label>
-              <input
-                type="email"
-                className="form-control"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email address"
-              />
-            </div>
-
-            <button type="submit" className="btn btn-primary" disabled={isUpdatingProfile} style={{ width: 'fit-content' }}>
-              {isUpdatingProfile ? 'Updating...' : 'Update Email'}
+          <div className="profile-booking-tabs" style={{ marginBottom: '0.8rem' }}>
+            <button
+              type="button"
+              className={`profile-tab-btn ${editView === 'profile' ? 'active' : ''}`}
+              onClick={() => setEditView('profile')}
+            >
+              Edit Profile
             </button>
-          </form>
-
-          <h2><ShieldCheck size={20} /> Security</h2>
-          <p className="profile-card-subtitle">Keep your account protected by updating your password regularly.</p>
-
-          {passwordError && (
-            <div className="profile-msg profile-msg-error">
-              {passwordError}
-            </div>
-          )}
-
-          {passwordInfo && (
-            <div className="profile-msg profile-msg-success">
-              {passwordInfo}
-            </div>
-          )}
-
-          <form onSubmit={handleChangePassword} className="profile-password-form">
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label>New Password</label>
-              <input
-                type="password"
-                className="form-control"
-                minLength={8}
-                required
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Minimum 8 characters"
-              />
-            </div>
-
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label>Confirm New Password</label>
-              <input
-                type="password"
-                className="form-control"
-                minLength={8}
-                required
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Re-enter new password"
-              />
-            </div>
-
-            <button type="submit" className="btn btn-primary" disabled={isUpdatingPassword} style={{ width: 'fit-content' }}>
-              {isUpdatingPassword ? 'Updating...' : 'Update Password'}
+            <button
+              type="button"
+              className={`profile-tab-btn ${editView === 'password' ? 'active' : ''}`}
+              onClick={() => setEditView('password')}
+            >
+              Change Password
             </button>
-          </form>
+          </div>
+
+          {editView === 'profile' && (
+            <>
+              {profileError && (
+                <div className="profile-msg profile-msg-error">
+                  {profileError}
+                </div>
+              )}
+
+              {profileInfo && (
+                <div className="profile-msg profile-msg-success">
+                  {profileInfo}
+                </div>
+              )}
+
+              <form onSubmit={handleUpdateProfile} className="profile-password-form">
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label>Full Name</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    required
+                    minLength={2}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Enter your full name"
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label>Email Address</label>
+                  <input
+                    type="email"
+                    className="form-control"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Enter your email address"
+                  />
+                </div>
+
+                <button type="submit" className="btn btn-primary" disabled={isUpdatingProfile} style={{ width: 'fit-content' }}>
+                  {isUpdatingProfile ? 'Updating...' : 'Save Changes'}
+                </button>
+              </form>
+            </>
+          )}
+
+          {editView === 'password' && (
+            <>
+              {passwordError && (
+                <div className="profile-msg profile-msg-error">
+                  {passwordError}
+                </div>
+              )}
+
+              {passwordInfo && (
+                <div className="profile-msg profile-msg-success">
+                  {passwordInfo}
+                </div>
+              )}
+
+              <form onSubmit={handleChangePassword} className="profile-password-form">
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label>New Password</label>
+                  <input
+                    type="password"
+                    className="form-control"
+                    minLength={8}
+                    required
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Minimum 8 characters"
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label>Confirm New Password</label>
+                  <input
+                    type="password"
+                    className="form-control"
+                    minLength={8}
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter new password"
+                  />
+                </div>
+
+                <button type="submit" className="btn btn-primary" disabled={isUpdatingPassword} style={{ width: 'fit-content' }}>
+                  {isUpdatingPassword ? 'Updating...' : 'Update Password'}
+                </button>
+              </form>
+            </>
+          )}
         </div>
 
         <div className="glass profile-bookings-card">
@@ -289,7 +333,7 @@ const Profile = () => {
               <h2><Clock3 size={20} /> Booking History</h2>
               <p>Every reservation and return status at a glance.</p>
             </div>
-            <span className="profile-pill">{bookings.length} total</span>
+            {bookings.length > 0 && <span className="profile-pill">{bookings.length} total</span>}
           </div>
 
           <div className="profile-booking-tabs">
@@ -324,7 +368,12 @@ const Profile = () => {
           </div>
 
           {filteredBookings.length === 0 ? (
-            <p className="profile-empty-text">No bookings found for this filter.</p>
+            <div style={{ textAlign: 'center', padding: '2rem 1rem', display: 'grid', gap: '0.75rem', justifyItems: 'center' }}>
+              <ShoppingBag size={28} color="var(--text-muted)" />
+              <h3 style={{ margin: 0 }}>No rentals yet</h3>
+              <p style={{ color: 'var(--text-muted)', margin: 0 }}>Browse our catalog to find your perfect outfit.</p>
+              <Link to="/browse" className="btn btn-primary">Browse Catalog</Link>
+            </div>
           ) : (
             <div className="profile-bookings-list">
               {filteredBookings.map((booking) => (
@@ -347,6 +396,14 @@ const Profile = () => {
                     <span className={`profile-status-chip ${booking.status === 'returned' ? 'is-returned' : booking.status === 'cancelled' ? 'is-cancelled' : 'is-booked'}`}>
                       {booking.status.toUpperCase()}
                     </span>
+                    {booking.status === 'returned' && (
+                      <Link
+                        to={'/cloth/' + (booking.clothId?._id || booking.clothId)}
+                        style={{ fontSize: '0.78rem', color: 'var(--primary-color)', marginTop: '0.3rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+                      >
+                        <Star size={12} />Leave a review
+                      </Link>
+                    )}
                     {canCancelBooking(booking) && (
                       <button
                         type="button"
@@ -362,6 +419,36 @@ const Profile = () => {
               ))}
             </div>
           )}
+        </div>
+      </section>
+
+      <section style={{ marginTop: '1rem' }}>
+        <div className="glass" style={{ border: '1px solid rgba(239, 68, 68, 0.5)', background: 'rgba(239, 68, 68, 0.05)', padding: '1.1rem' }}>
+          <h2 style={{ marginBottom: '0.35rem', color: '#ffb4ab' }}>Danger Zone</h2>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>
+            Deleting your account is permanent and will remove your rentals and saved activity.
+          </p>
+          <button
+            type="button"
+            className="btn btn-danger"
+            onClick={async () => {
+              const confirmed = window.confirm('Delete your account permanently? This action cannot be undone.');
+              if (!confirmed) return;
+
+              const password = window.prompt('Enter your current password to confirm account deletion:');
+              if (!password) return;
+
+              try {
+                await api.delete('/users/profile', { data: { password } });
+                logout();
+                navigate('/signin');
+              } catch (err) {
+                alert(err?.response?.data?.message || 'Unable to delete account right now.');
+              }
+            }}
+          >
+            Delete Account
+          </button>
         </div>
       </section>
     </div>
