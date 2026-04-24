@@ -795,6 +795,12 @@ input[type="date"].form-control {
   flex-wrap: wrap;
 }
 
+.catalog-card-img-wrap img {
+  object-fit: contain !important;
+  object-position: center center !important;
+  background: #111 !important;
+}
+
 .catalog-badge {
   display: inline-block;
   padding: 0.22rem 0.6rem;
