@@ -712,21 +712,43 @@ input[type="date"].form-control {
 
 .catalog-card-img-wrap {
   position: relative;
-  height: 290px;
+  height: 320px;        /* change from 290px */
   overflow: hidden;
-  background: rgba(0, 0, 0, 0.2);
+  background: #0d0d14;
 }
 
 .catalog-card-image {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  display: block;
+  object-fit: contain !important;
+  object-position: center top !important;
+  transition: transform 0.45s ease !important;
+}
+
+.catalog-card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain !important;
+  object-position: center top !important;
   transition: transform 0.45s ease !important;
 }
 
 .catalog-card:hover .catalog-card-image {
   transform: scale(1.06);
+}
+
+.catalog-card-img-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(5, 8, 14, 0) 0%, rgba(5, 8, 14, 0.22) 100%);
+  opacity: 0.8;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+
+.catalog-card:hover .catalog-card-img-wrap::after {
+  opacity: 1;
 }
 
 .catalog-card-badges {
@@ -794,6 +816,12 @@ input[type="date"].form-control {
 .catalog-card:hover .catalog-overlay-btn {
   opacity: 1;
   transform: translateY(0);
+}
+
+.catalog-image-cta:hover {
+  background: rgba(212, 175, 55, 0.92);
+  border-color: rgba(212, 175, 55, 0.9);
+  color: #1a2638;
 }
 
 .catalog-avail-badge {

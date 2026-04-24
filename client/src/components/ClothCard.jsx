@@ -6,37 +6,13 @@ const ClothCard = ({ cloth }) => {
   const imageUrl = getClothImageSrc(cloth);
 
   return (
-    <div
-      className="glass catalog-card"
-      style={{
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
-      <div
-        style={{
-          height: '300px',
-          backgroundColor: 'rgba(0,0,0,0.2)',
-          position: 'relative',
-        }}
-      >
+    <div className="glass catalog-card" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <div className="catalog-card-img-wrap">
         <img
           src={imageUrl}
           alt={cloth.title}
           className="catalog-card-image"
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            transition: 'transform 0.35s ease',
-          }}
-          onError={(e) => {
-            e.target.src = getClothImageSrc({
-              title: cloth.title,
-              category: cloth.category,
-            });
-          }}
+          onError={(e) => { e.target.src = getClothImageSrc({ title: cloth.title, category: cloth.category }); }}
         />
 
         <span
