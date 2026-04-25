@@ -12,5 +12,7 @@
     "build": "npm run build --prefix client",
     "start": "npm run start --prefix server"
   },
-  "devDependencies": {}
+  "dependencies": {
+    "serve": "^14.2.6"
+  }
 }

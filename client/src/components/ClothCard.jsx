@@ -7,11 +7,17 @@ const ClothCard = ({ cloth }) => {
 
   return (
     <div className="glass catalog-card" style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-      <div className="catalog-card-img-wrap">
+      <div className="catalog-card-img-wrap" style={{ background: '#0d0d14' }}>
         <img
           src={imageUrl}
           alt={cloth.title}
           className="catalog-card-image"
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'contain',
+            objectPosition: 'center top',
+          }}
           onError={(e) => { e.target.src = getClothImageSrc({ title: cloth.title, category: cloth.category }); }}
         />
 
