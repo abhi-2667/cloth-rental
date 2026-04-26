@@ -2,6 +2,7 @@ import { lazy, Suspense, useMemo, useState, useEffect, useContext, useRef } from
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import 'react-day-picker/dist/style.css';
 import { AuthContext } from '../context/AuthContext';
+import { ToastContext } from '../context/ToastContext';
 import api from '../utils/api';
 import { ArrowLeft, Calendar, ChevronDown, Clock3 } from 'lucide-react';
 import { getClothImageSrc } from '../utils/visuals';
@@ -38,6 +39,7 @@ const BookingPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
+  const { toast } = useContext(ToastContext);
   const calendarPopoverRef = useRef(null);
   const [cloth, setCloth] = useState(null);
   const [startDate, setStartDate] = useState('');
@@ -130,7 +132,7 @@ const BookingPage = () => {
   const handleBooking = async (e) => {
     e.preventDefault();
     if (!user) {
-      alert('Please login first to book an item'); return;
+      toast.error('Please login first to book an item'); return;
     }
     setError('');
     setSuccess('');

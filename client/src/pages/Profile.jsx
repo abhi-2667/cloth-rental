@@ -145,7 +145,7 @@ const Profile = () => {
       await api.put(`/bookings/${bookingId}/cancel`);
       await refreshBookings();
     } catch (err) {
-      alert(err?.response?.data?.message || 'Unable to cancel booking right now.');
+      toast.error(err?.response?.data?.message || 'Unable to cancel booking right now.');
     }
   };
 
@@ -156,8 +156,9 @@ const Profile = () => {
     try {
       await api.put(`/bookings/${bookingId}/request-return`);
       await refreshBookings();
+      toast.success('Return requested successfully. Admin will review it.');
     } catch (err) {
-      alert(err?.response?.data?.message || 'Unable to initiate return right now.');
+      toast.error(err?.response?.data?.message || 'Unable to initiate return right now.');
     }
   };
 

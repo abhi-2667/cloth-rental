@@ -1,5 +1,6 @@
 import { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
+import { ToastContext } from '../context/ToastContext';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../utils/api';
 import { PlusCircle, Package, CheckCircle, Users, Shield, BarChart3 } from 'lucide-react';
@@ -7,6 +8,7 @@ import { formatINR } from '../utils/currency';
 
 const AdminDashboard = () => {
   const { user } = useContext(AuthContext);
+  const { toast } = useContext(ToastContext);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [bookings, setBookings] = useState([]);
@@ -107,8 +109,9 @@ const AdminDashboard = () => {
     try {
       await api.put(`/bookings/${id}/return`);
       fetchBookings();
+      toast.success('Item marked as returned');
     } catch (err) {
-      alert('Failed to mark as returned');
+      toast.error('Failed to mark as returned');
     }
   };
 
@@ -119,11 +122,11 @@ const AdminDashboard = () => {
     
     try {
       await api.post('/clothes', data, { headers: { 'Content-Type': 'multipart/form-data' }});
-      alert('Item added successfully');
+      toast.success('Item added successfully');
       setFormData({ title: '', description: '', category: '', size: '', pricePerDay: '', image: null });
       fetchClothes();
     } catch (err) {
-      alert('Failed to add item');
+      toast.error('Failed to add item');
     }
   };
 
@@ -148,8 +151,9 @@ const AdminDashboard = () => {
       await api.put(`/clothes/${clothId}`, editData);
       setEditingId(null);
       fetchClothes();
+      toast.success('Item updated');
     } catch (err) {
-      alert('Failed to update item');
+      toast.error('Failed to update item');
     }
   };
 
@@ -160,8 +164,9 @@ const AdminDashboard = () => {
     try {
       await api.delete(`/clothes/${clothId}`);
       fetchClothes();
+      toast.success('Item deleted');
     } catch (err) {
-      alert('Failed to delete item');
+      toast.error('Failed to delete item');
     }
   };
 
@@ -176,8 +181,9 @@ const AdminDashboard = () => {
         availability: !cloth.availability,
       });
       fetchClothes();
+      toast.success(cloth.availability ? 'Item set to unavailable' : 'Item set to available');
     } catch (err) {
-      alert('Failed to update availability');
+      toast.error('Failed to update availability');
     }
   };
 
@@ -191,8 +197,9 @@ const AdminDashboard = () => {
     try {
       await api.put(`/users/${targetUser.id || targetUser._id}/role`, { role: newRole });
       fetchUsers();
+      toast.success(`User role updated to ${newRole}`);
     } catch (err) {
-      alert(err?.response?.data?.message || 'Failed to update user role');
+      toast.error(err?.response?.data?.message || 'Failed to update user role');
     } finally {
       setUpdatingUserId(null);
     }
@@ -209,8 +216,9 @@ const AdminDashboard = () => {
     try {
       await api.put(`/users/${userId}/approval`, { approvalStatus });
       fetchUsers();
+      toast.success(`User marked as ${approvalStatus}`);
     } catch (err) {
-      alert(err?.response?.data?.message || 'Failed to update approval status');
+      toast.error(err?.response?.data?.message || 'Failed to update approval status');
     } finally {
       setUpdatingApprovalId(null);
     }
