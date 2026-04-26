@@ -1,6 +1,6 @@
 const categoryImages = {
   wedding: [
-    'https://images.unsplash.com/photo-1549416812-706786cdec9a?q=80&w=1000&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?q=80&w=1000&auto=format&fit=crop',
     'https://images.unsplash.com/photo-1594938298596-ecdf91811eb1?q=80&w=1000&auto=format&fit=crop',
     'https://images.unsplash.com/photo-1532453288672-3a27e9be9efd?q=80&w=1000&auto=format&fit=crop'
   ],
