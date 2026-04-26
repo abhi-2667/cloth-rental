@@ -53,7 +53,10 @@ const AuthPage = () => {
       <div className="auth-page-shell glass">
         <aside className="auth-editorial" aria-hidden="true">
           <img
-            src={getEditorialPanelSrc(isLogin ? 'Sign In' : 'Sign Up', isAdminLogin ? 'wedding' : (isLogin ? 'party' : 'wedding'))}
+            src={isAdminLogin 
+              ? 'https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?q=80&w=1000&auto=format&fit=crop' 
+              : getEditorialPanelSrc(isLogin ? 'Sign In' : 'Sign Up', isLogin ? 'party' : 'wedding')
+            }
             alt=""
             className="auth-editorial-image"
           />
