@@ -2,7 +2,8 @@ import { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
-import { Clock3, UserCircle2, Wallet, BadgeCheck, CheckCircle2, Sparkles, Star, ShoppingBag } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import { Clock3, UserCircle2, Wallet, BadgeCheck, CheckCircle2, Sparkles, ShoppingBag } from 'lucide-react';
 import { getClothImageSrc } from '../utils/visuals';
 import { formatINR } from '../utils/currency';
 
@@ -27,10 +28,6 @@ const Profile = () => {
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteError, setDeleteError] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
-  
-  const [reviewModalCloth, setReviewModalCloth] = useState(null);
-  const [rating, setRating] = useState(5);
-  const [comment, setComment] = useState('');
 
   const formatDateRange = (startDate, endDate) => {
     const start = new Date(startDate).toLocaleDateString();
@@ -166,18 +163,6 @@ const Profile = () => {
     }
   };
 
-  const submitReview = async () => {
-    try {
-      await api.post('/reviews', { clothId: reviewModalCloth, rating, comment });
-      toast.success('Review submitted successfully!');
-      setReviewModalCloth(null);
-      setRating(5);
-      setComment('');
-    } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to submit review');
-    }
-  };
-
   return (
     <div className="profile-page">
       <section className="glass profile-hero fade-up">
@@ -267,17 +252,11 @@ const Profile = () => {
           {editView === 'profile' && (
             <>
               {profileError && (
-                <div className="profile-msg profile-msg-error">
-                  {profileError}
-                </div>
+                <div className="profile-msg profile-msg-error">{profileError}</div>
               )}
-
               {profileInfo && (
-                <div className="profile-msg profile-msg-success">
-                  {profileInfo}
-                </div>
+                <div className="profile-msg profile-msg-success">{profileInfo}</div>
               )}
-
               <form onSubmit={handleUpdateProfile} className="profile-password-form">
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label>Full Name</label>
@@ -291,7 +270,6 @@ const Profile = () => {
                     placeholder="Enter your full name"
                   />
                 </div>
-
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label>Email Address</label>
                   <input
@@ -303,7 +281,6 @@ const Profile = () => {
                     placeholder="Enter your email address"
                   />
                 </div>
-
                 <button type="submit" className="btn btn-primary" disabled={isUpdatingProfile} style={{ width: 'fit-content' }}>
                   {isUpdatingProfile ? 'Updating...' : 'Save Changes'}
                 </button>
@@ -314,17 +291,11 @@ const Profile = () => {
           {editView === 'password' && (
             <>
               {passwordError && (
-                <div className="profile-msg profile-msg-error">
-                  {passwordError}
-                </div>
+                <div className="profile-msg profile-msg-error">{passwordError}</div>
               )}
-
               {passwordInfo && (
-                <div className="profile-msg profile-msg-success">
-                  {passwordInfo}
-                </div>
+                <div className="profile-msg profile-msg-success">{passwordInfo}</div>
               )}
-
               <form onSubmit={handleChangePassword} className="profile-password-form">
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label>New Password</label>
@@ -338,7 +309,6 @@ const Profile = () => {
                     placeholder="Minimum 8 characters"
                   />
                 </div>
-
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label>Confirm New Password</label>
                   <input
@@ -351,7 +321,6 @@ const Profile = () => {
                     placeholder="Re-enter new password"
                   />
                 </div>
-
                 <button type="submit" className="btn btn-primary" disabled={isUpdatingPassword} style={{ width: 'fit-content' }}>
                   {isUpdatingPassword ? 'Updating...' : 'Update Password'}
                 </button>
@@ -417,7 +386,6 @@ const Profile = () => {
                         <img src={getClothImageSrc(booking.clothId)} alt="" />
                       )}
                     </div>
-
                     <div className="profile-booking-copy">
                       <h3>{booking.clothId?.title || 'Item Unavailable'}</h3>
                       <p>{formatDateRange(booking.startDate, booking.endDate)}</p>
@@ -426,18 +394,15 @@ const Profile = () => {
 
                   <div className="profile-booking-meta">
                     <p>{formatINR(booking.totalPrice)}</p>
-                    <span className={`profile-status-chip ${booking.status === 'returned' ? 'is-returned' : booking.status === 'cancelled' ? 'is-cancelled' : booking.status === 'return_requested' ? 'is-booked' : 'is-booked'}`} style={{ borderColor: booking.status === 'return_requested' ? '#f59e0b' : '', color: booking.status === 'return_requested' ? '#f59e0b' : '' }}>
+                    <span
+                      className={`profile-status-chip ${booking.status === 'returned' ? 'is-returned' : booking.status === 'cancelled' ? 'is-cancelled' : 'is-booked'}`}
+                      style={{
+                        borderColor: booking.status === 'return_requested' ? '#f59e0b' : '',
+                        color: booking.status === 'return_requested' ? '#f59e0b' : ''
+                      }}
+                    >
                       {booking.status.replace('_', ' ').toUpperCase()}
                     </span>
-                    {booking.status === 'returned' && (
-                      <button
-                        type="button"
-                        onClick={() => setReviewModalCloth(booking.clothId?._id || booking.clothId)}
-                        style={{ fontSize: '0.78rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary-color)', marginTop: '0.3rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
-                      >
-                        <Star size={12} />Leave a review
-                      </button>
-                    )}
                     {booking.status === 'booked' && (
                       <button
                         type="button"
@@ -490,30 +455,28 @@ const Profile = () => {
               This action is permanent. All your active rentals and saved history will be erased.
             </p>
             {deleteError && <div className="profile-msg profile-msg-error" style={{ marginBottom: '1rem' }}>{deleteError}</div>}
-            
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label>Enter password to confirm:</label>
-              <input 
-                type="password" 
-                className="form-control" 
+              <input
+                type="password"
+                className="form-control"
                 value={deletePassword}
                 onChange={(e) => setDeletePassword(e.target.value)}
                 placeholder="Current password"
                 autoFocus
               />
             </div>
-            
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
-              <button 
-                className="btn btn-outline" 
+              <button
+                className="btn btn-outline"
                 onClick={() => { setShowDeleteModal(false); setDeletePassword(''); setDeleteError(''); }}
                 disabled={isDeleting}
               >
                 Cancel
               </button>
-              <button 
-                className="btn btn-danger" 
-                disabled={isDeleting || !deletePassword} 
+              <button
+                className="btn btn-danger"
+                disabled={isDeleting || !deletePassword}
                 onClick={async () => {
                   setIsDeleting(true);
                   setDeleteError('');
@@ -528,56 +491,6 @@ const Profile = () => {
                 }}
               >
                 {isDeleting ? 'Deleting...' : 'Permanently Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {reviewModalCloth && (
-        <div className="modal-overlay">
-          <div className="modal-content glass">
-            <h3 style={{ marginBottom: '0.5rem' }}>Leave a Review</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.25rem' }}>
-              How was this item? Your review helps others make great choices!
-            </p>
-            
-            <div className="form-group">
-              <label>Rating (1 to 5)</label>
-              <select className="form-control" value={rating} onChange={(e) => setRating(Number(e.target.value))}>
-                <option value={5}>5 - Excellent</option>
-                <option value={4}>4 - Very Good</option>
-                <option value={3}>3 - Average</option>
-                <option value={2}>2 - Poor</option>
-                <option value={1}>1 - Terrible</option>
-              </select>
-            </div>
-
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label>Comment</label>
-              <textarea 
-                className="form-control" 
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="What did you love about this piece?"
-                rows={3}
-                required
-              />
-            </div>
-            
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
-              <button 
-                className="btn btn-outline" 
-                onClick={() => setReviewModalCloth(null)}
-              >
-                Cancel
-              </button>
-              <button 
-                className="btn btn-primary" 
-                disabled={!comment} 
-                onClick={submitReview}
-              >
-                Submit Review
               </button>
             </div>
           </div>
