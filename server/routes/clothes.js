@@ -6,15 +6,20 @@ const { protect, admin, approvedAccount } = require('../middleware/authMiddlewar
 const { validateClothPayload, validateObjectIdParam } = require('../middleware/validationMiddleware');
 
 const multer = require('multer');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinary = require('cloudinary').v2;
 
-// Setup multer storage (using local storage for simplicity right now unless Cloudinary is fully configured)
-const uploadsDir = path.resolve(__dirname, '..', 'uploads');
-const storage = multer.diskStorage({
-  destination: function(req, file, cb) {
-    cb(null, uploadsDir);
-  },
-  filename: function(req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname);
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'cloth-rental',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'heic']
   }
 });
 const upload = multer({ storage: storage });

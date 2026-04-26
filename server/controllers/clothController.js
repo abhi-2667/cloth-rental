@@ -76,7 +76,7 @@ const addCloth = async (req, res) => {
     let imageUrl = '';
 
     if (req.file) {
-      imageUrl = '/uploads/' + req.file.filename;
+      imageUrl = req.file.path;
     } else if (req.body.imageUrl) {
       imageUrl = req.body.imageUrl;
     } else {
@@ -134,7 +134,7 @@ const updateCloth = async (req, res) => {
     if (availability !== undefined) updateFields.availability = availability;
     
     if (req.file) {
-      updateFields.imageUrl = '/uploads/' + req.file.filename;
+      updateFields.imageUrl = req.file.path;
     }
 
     if (useDevStore) {
