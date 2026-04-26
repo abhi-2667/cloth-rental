@@ -301,8 +301,6 @@ router.delete('/profile', protect, approvedAccount, async (req, res) => {
 
     await Promise.all([
       Notification.deleteMany({ userId: user._id }),
-      Wishlist.deleteMany({ userId: user._id }),
-      Review.deleteMany({ userId: user._id }),
       User.deleteOne({ _id: user._id }),
     ]);
 

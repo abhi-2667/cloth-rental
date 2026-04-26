@@ -27,6 +27,10 @@ const Profile = () => {
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteError, setDeleteError] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  const [reviewModalCloth, setReviewModalCloth] = useState(null);
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState('');
 
   const formatDateRange = (startDate, endDate) => {
     const start = new Date(startDate).toLocaleDateString();
@@ -159,6 +163,18 @@ const Profile = () => {
       toast.success('Return requested successfully. Admin will review it.');
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Unable to initiate return right now.');
+    }
+  };
+
+  const submitReview = async () => {
+    try {
+      await api.post('/reviews', { clothId: reviewModalCloth, rating, comment });
+      toast.success('Review submitted successfully!');
+      setReviewModalCloth(null);
+      setRating(5);
+      setComment('');
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to submit review');
     }
   };
 
@@ -414,12 +430,13 @@ const Profile = () => {
                       {booking.status.replace('_', ' ').toUpperCase()}
                     </span>
                     {booking.status === 'returned' && (
-                      <Link
-                        to={'/cloth/' + (booking.clothId?._id || booking.clothId)}
-                        style={{ fontSize: '0.78rem', color: 'var(--primary-color)', marginTop: '0.3rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+                      <button
+                        type="button"
+                        onClick={() => setReviewModalCloth(booking.clothId?._id || booking.clothId)}
+                        style={{ fontSize: '0.78rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary-color)', marginTop: '0.3rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
                       >
                         <Star size={12} />Leave a review
-                      </Link>
+                      </button>
                     )}
                     {booking.status === 'booked' && (
                       <button
@@ -511,6 +528,56 @@ const Profile = () => {
                 }}
               >
                 {isDeleting ? 'Deleting...' : 'Permanently Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {reviewModalCloth && (
+        <div className="modal-overlay">
+          <div className="modal-content glass">
+            <h3 style={{ marginBottom: '0.5rem' }}>Leave a Review</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.25rem' }}>
+              How was this item? Your review helps others make great choices!
+            </p>
+            
+            <div className="form-group">
+              <label>Rating (1 to 5)</label>
+              <select className="form-control" value={rating} onChange={(e) => setRating(Number(e.target.value))}>
+                <option value={5}>5 - Excellent</option>
+                <option value={4}>4 - Very Good</option>
+                <option value={3}>3 - Average</option>
+                <option value={2}>2 - Poor</option>
+                <option value={1}>1 - Terrible</option>
+              </select>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Comment</label>
+              <textarea 
+                className="form-control" 
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="What did you love about this piece?"
+                rows={3}
+                required
+              />
+            </div>
+            
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+              <button 
+                className="btn btn-outline" 
+                onClick={() => setReviewModalCloth(null)}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn btn-primary" 
+                disabled={!comment} 
+                onClick={submitReview}
+              >
+                Submit Review
               </button>
             </div>
           </div>

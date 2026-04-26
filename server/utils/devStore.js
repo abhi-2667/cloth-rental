@@ -5,7 +5,6 @@ const state = {
   users: [],
   clothes: [],
   bookings: [],
-  wishlistItems: [],
   reviews: [],
   notifications: [],
   pendingSignups: [],
@@ -613,8 +612,6 @@ const deleteUserAccount = (userId) => {
   }
 
   state.notifications = state.notifications.filter((notification) => notification.userId !== normalizedUserId);
-  state.wishlistItems = state.wishlistItems.filter((item) => item.userId !== normalizedUserId);
-  state.reviews = state.reviews.filter((review) => review.userId !== normalizedUserId);
 
   const normalizedEmail = String(user.email || '').toLowerCase();
   state.pendingSignups = state.pendingSignups.filter((item) => item.email.toLowerCase() !== normalizedEmail);

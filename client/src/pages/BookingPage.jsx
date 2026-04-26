@@ -4,7 +4,7 @@ import 'react-day-picker/dist/style.css';
 import { AuthContext } from '../context/AuthContext';
 import { ToastContext } from '../context/ToastContext';
 import api from '../utils/api';
-import { ArrowLeft, Calendar, ChevronDown, Clock3 } from 'lucide-react';
+import { ArrowLeft, Calendar, ChevronDown, Clock3, Star } from 'lucide-react';
 import { getClothImageSrc } from '../utils/visuals';
 import { formatINR } from '../utils/currency';
 
@@ -49,6 +49,7 @@ const BookingPage = () => {
   const [blockedRanges, setBlockedRanges] = useState([]);
   const [isLoadingCloth, setIsLoadingCloth] = useState(true);
   const [isLoadingBlockedDates, setIsLoadingBlockedDates] = useState(true);
+  const [reviews, setReviews] = useState([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -76,8 +77,18 @@ const BookingPage = () => {
       }
     };
 
+    const fetchReviews = async () => {
+      try {
+        const reviewRes = await api.get(`/reviews/cloth/${id}`);
+        setReviews(reviewRes.data || []);
+      } catch (err) {
+        console.error('Failed to load reviews');
+      }
+    };
+
     fetchCloth();
     fetchBlockedRanges();
+    fetchReviews();
   }, [id]);
 
   useEffect(() => {
@@ -319,6 +330,34 @@ const BookingPage = () => {
             </form>
         </aside>
       </section>
+
+      {reviews.length > 0 && (
+        <section style={{ marginTop: '3rem' }}>
+          <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Star size={20} color="var(--primary-color)" /> Reviews ({reviews.length})
+          </h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+            {reviews.map((review) => (
+              <div key={review._id} className="glass" style={{ padding: '1.25rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                  <strong style={{ color: 'var(--text-color)' }}>{review.userId?.name || 'Anonymous User'}</strong>
+                  <div style={{ display: 'flex', gap: '2px' }}>
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} size={14} color={i < review.rating ? 'var(--primary-color)' : 'rgba(255,255,255,0.2)'} fill={i < review.rating ? 'var(--primary-color)' : 'none'} />
+                    ))}
+                  </div>
+                </div>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.5', margin: 0 }}>
+                  "{review.comment}"
+                </p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.75rem', opacity: 0.6 }}>
+                  {new Date(review.createdAt).toLocaleDateString()}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 };
