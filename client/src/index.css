@@ -4064,3 +4064,30 @@ input[type="date"].form-control {
     grid-template-columns: 1fr;
   }
 }
+
+/* ============================================================
+   MODALS
+   ============================================================ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 1.5rem;
+  animation: fadeIn 0.2s ease;
+}
+
+.modal-content {
+  width: 100%;
+  max-width: 440px;
+  padding: 1.75rem;
+  border-radius: var(--radius);
+  animation: fadeUp 0.3s ease both;
+  background: rgba(13, 20, 35, 0.95);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}

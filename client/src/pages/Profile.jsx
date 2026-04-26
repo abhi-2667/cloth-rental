@@ -23,6 +23,10 @@ const Profile = () => {
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [editView, setEditView] = useState('profile');
   const [bookingFilter, setBookingFilter] = useState('all');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const formatDateRange = (startDate, endDate) => {
     const start = new Date(startDate).toLocaleDateString();
@@ -431,26 +435,64 @@ const Profile = () => {
           <button
             type="button"
             className="btn btn-danger"
-            onClick={async () => {
-              const confirmed = window.confirm('Delete your account permanently? This action cannot be undone.');
-              if (!confirmed) return;
-
-              const password = window.prompt('Enter your current password to confirm account deletion:');
-              if (!password) return;
-
-              try {
-                await api.delete('/users/profile', { data: { password } });
-                logout();
-                navigate('/signin');
-              } catch (err) {
-                alert(err?.response?.data?.message || 'Unable to delete account right now.');
-              }
-            }}
+            onClick={() => setShowDeleteModal(true)}
           >
             Delete Account
           </button>
         </div>
       </section>
+
+      {showDeleteModal && (
+        <div className="modal-overlay">
+          <div className="modal-content glass">
+            <h3 style={{ color: '#ffb4ab', marginBottom: '0.5rem' }}>Confirm Account Deletion</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.25rem' }}>
+              This action is permanent. All your active rentals and saved history will be erased.
+            </p>
+            {deleteError && <div className="profile-msg profile-msg-error" style={{ marginBottom: '1rem' }}>{deleteError}</div>}
+            
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Enter password to confirm:</label>
+              <input 
+                type="password" 
+                className="form-control" 
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                placeholder="Current password"
+                autoFocus
+              />
+            </div>
+            
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+              <button 
+                className="btn btn-outline" 
+                onClick={() => { setShowDeleteModal(false); setDeletePassword(''); setDeleteError(''); }}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn btn-danger" 
+                disabled={isDeleting || !deletePassword} 
+                onClick={async () => {
+                  setIsDeleting(true);
+                  setDeleteError('');
+                  try {
+                    await api.delete('/users/profile', { data: { password: deletePassword } });
+                    logout();
+                    navigate('/signin');
+                  } catch (err) {
+                    setDeleteError(err?.response?.data?.message || 'Unable to delete account right now.');
+                    setIsDeleting(false);
+                  }
+                }}
+              >
+                {isDeleting ? 'Deleting...' : 'Permanently Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
