@@ -26,8 +26,7 @@ const createBooking = async (req, res) => {
     if (useDevStore) {
       const start = new Date(startDate);
       const end = new Date(endDate);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const today = getNormalizedToday();
 
       if (start >= end) {
         return res.status(400).json({ message: 'End date must be after start date' });
@@ -68,12 +67,11 @@ const createBooking = async (req, res) => {
 
       return res.status(201).json(booking);
     }
-    
+
     const start = new Date(startDate);
     const end = new Date(endDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
+    const today = getNormalizedToday();
+
     if (start >= end) {
       return res.status(400).json({ message: 'End date must be after start date' });
     }
@@ -86,7 +84,6 @@ const createBooking = async (req, res) => {
     if (!cloth) return res.status(404).json({ message: 'Cloth not found' });
     if (!cloth.availability) return res.status(400).json({ message: 'Cloth is currently unavailable overall' });
 
-    // existingStart <= newEnd && existingEnd >= newStart
     const overlappingBookings = await Booking.find({
       clothId,
       status: 'booked',
@@ -243,11 +240,18 @@ const cancelBooking = async (req, res) => {
 
 const returnCloth = async (req, res) => {
   try {
+    // Admin only — guard against non-admin calls
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied. Admins only.' });
+    }
+
     if (useDevStore) {
-      const booking = devStore.updateBooking(req.params.id, { status: 'returned' });
+      const booking = devStore.getBookingById(req.params.id);
       if (!booking) return res.status(404).json({ message: 'Booking not found' });
 
+      const updated = devStore.updateBooking(req.params.id, { status: 'returned' });
       const cloth = devStore.getClothById(booking.clothId);
+
       await createUserNotification({
         userId: booking.userId,
         type: 'booking_returned',
@@ -256,7 +260,7 @@ const returnCloth = async (req, res) => {
         metadata: { bookingId: booking._id, clothId: booking.clothId },
       });
 
-      return res.json(booking);
+      return res.json(updated);
     }
 
     const booking = await Booking.findById(req.params.id);
@@ -288,6 +292,16 @@ const requestReturn = async (req, res) => {
       if (booking.status !== 'booked') return res.status(400).json({ message: 'Can only return active bookings' });
 
       const updated = devStore.updateBooking(req.params.id, { status: 'return_requested' });
+      const cloth = devStore.getClothById(booking.clothId);
+
+      await createUserNotification({
+        userId: req.user.id,
+        type: 'return_requested',
+        title: 'Return requested',
+        message: `A return has been requested for ${cloth?.title || 'an item'}. Please review and arrange pickup.`,
+        metadata: { bookingId: booking._id, clothId: booking.clothId },
+      });
+
       return res.json(updated);
     }
 
@@ -297,7 +311,16 @@ const requestReturn = async (req, res) => {
 
     booking.status = 'return_requested';
     await booking.save();
-    
+
+    const cloth = await Cloth.findById(booking.clothId).select('title');
+    await createUserNotification({
+      userId: req.user.id,
+      type: 'return_requested',
+      title: 'Return requested',
+      message: `A return has been requested for ${cloth?.title || 'an item'}. Please review and arrange pickup.`,
+      metadata: { bookingId: booking._id, clothId: booking.clothId },
+    });
+
     res.json(booking);
   } catch (error) {
     res.status(500).json({ message: error.message });
