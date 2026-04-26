@@ -4,7 +4,7 @@ import 'react-day-picker/dist/style.css';
 import { AuthContext } from '../context/AuthContext';
 import { ToastContext } from '../context/ToastContext';
 import api from '../utils/api';
-import { ArrowLeft, Calendar, ChevronDown, Clock3, Star } from 'lucide-react';
+import { ArrowLeft, Calendar, ChevronDown, Clock3 } from 'lucide-react';
 import { getClothImageSrc } from '../utils/visuals';
 import { formatINR } from '../utils/currency';
 
@@ -48,8 +48,6 @@ const BookingPage = () => {
   const [endTime, setEndTime] = useState('18:00');
   const [blockedRanges, setBlockedRanges] = useState([]);
   const [isLoadingCloth, setIsLoadingCloth] = useState(true);
-  const [isLoadingBlockedDates, setIsLoadingBlockedDates] = useState(true);
-  const [reviews, setReviews] = useState([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -72,23 +70,11 @@ const BookingPage = () => {
         setBlockedRanges(blockedRes.data || []);
       } catch (err) {
         setError('Failed to load unavailable dates.');
-      } finally {
-        setIsLoadingBlockedDates(false);
-      }
-    };
-
-    const fetchReviews = async () => {
-      try {
-        const reviewRes = await api.get(`/reviews/cloth/${id}`);
-        setReviews(reviewRes.data || []);
-      } catch (err) {
-        console.error('Failed to load reviews');
       }
     };
 
     fetchCloth();
     fetchBlockedRanges();
-    fetchReviews();
   }, [id]);
 
   useEffect(() => {
@@ -128,9 +114,7 @@ const BookingPage = () => {
   }, [startDate, endDate, blockedRanges]);
 
   const today = toDateOnly(new Date());
-  const blockedCalendarRanges = blockedRanges
-    .map(toCalendarRange)
-    .filter(Boolean);
+  const blockedCalendarRanges = blockedRanges.map(toCalendarRange).filter(Boolean);
   const selectedRange = startDate && endDate
     ? { from: toDateOnly(startDate), to: toDateOnly(endDate) }
     : undefined;
@@ -209,155 +193,127 @@ const BookingPage = () => {
             <p className="booking-subtitle">{cloth.description}</p>
           </div>
 
-            <p className="booking-subtitle booking-subtitle-tight">{cloth.occasion || cloth.category}</p>
+          <p className="booking-subtitle booking-subtitle-tight">{cloth.occasion || cloth.category}</p>
 
-            <form className="booking-form" onSubmit={handleBooking}>
-              <div className="booking-form-header">
-                <div className="booking-form-title-row">
-                  <div className={`booking-status-dot ${cloth.availability ? 'is-live' : 'is-offline'}`} />
-                  <Calendar size={18} />
-                  <span>Calendar</span>
-                </div>
-                <p>Choose dates, times, and confirm when ready.</p>
+          <form className="booking-form" onSubmit={handleBooking}>
+            <div className="booking-form-header">
+              <div className="booking-form-title-row">
+                <div className={`booking-status-dot ${cloth.availability ? 'is-live' : 'is-offline'}`} />
+                <Calendar size={18} />
+                <span>Calendar</span>
               </div>
+              <p>Choose dates, times, and confirm when ready.</p>
+            </div>
 
-              {error && <div className="booking-alert booking-alert-error">{error}</div>}
-              {success && <div className="booking-alert booking-alert-success">{success}</div>}
+            {error && <div className="booking-alert booking-alert-error">{error}</div>}
+            {success && <div className="booking-alert booking-alert-success">{success}</div>}
 
-              <div className="booking-stack booking-datetime-stack" ref={calendarPopoverRef}>
-                <div className="booking-datetime-row">
-                  <div className="booking-datetime-label">Start</div>
-                  <div className="booking-datetime-fields">
-                    <div className="booking-date-popover">
-                      <button
-                        type="button"
-                        className="form-control booking-date-trigger"
-                        onClick={() => setIsCalendarOpen((current) => !current)}
-                        aria-expanded={isCalendarOpen}
-                        aria-haspopup="dialog"
-                      >
-                        <span>{startDateLabel}</span>
-                        <ChevronDown size={14} />
-                      </button>
-
-                      {isCalendarOpen && (
-                        <div className="booking-calendar-popover">
-                          <div className="booking-calendar-shell">
-                            <Suspense fallback={<p className="booking-calendar-loading">Loading calendar...</p>}>
-                              <DayPicker
-                                className="booking-day-picker"
-                                mode="range"
-                                numberOfMonths={1}
-                                selected={selectedRange}
-                                onSelect={(range) => {
-                                  setStartDate(range?.from ? range.from.toISOString().split('T')[0] : '');
-                                  setEndDate(range?.to ? range.to.toISOString().split('T')[0] : '');
-                                  setError('');
-                                  setSuccess('');
-                                  if (range?.from && range?.to) {
-                                    setIsCalendarOpen(false);
-                                  }
-                                }}
-                                disabled={[{ before: today }, ...blockedCalendarRanges]}
-                                modifiers={{ booked: blockedCalendarRanges }}
-                                modifiersClassNames={{ booked: 'rdp-day_booked' }}
-                              />
-                            </Suspense>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <label className="booking-time-field">
-                      <span className="booking-sr-label">Start time</span>
-                      <Clock3 size={14} />
-                      <input
-                        type="time"
-                        className="form-control booking-time-input"
-                        value={startTime}
-                        onChange={(event) => setStartTime(event.target.value)}
-                      />
-                    </label>
-                  </div>
-                </div>
-
-                <div className="booking-datetime-row">
-                  <div className="booking-datetime-label">End</div>
-                  <div className="booking-datetime-fields">
+            <div className="booking-stack booking-datetime-stack" ref={calendarPopoverRef}>
+              <div className="booking-datetime-row">
+                <div className="booking-datetime-label">Start</div>
+                <div className="booking-datetime-fields">
+                  <div className="booking-date-popover">
                     <button
                       type="button"
-                      className="form-control booking-date-trigger booking-date-trigger-static"
+                      className="form-control booking-date-trigger"
                       onClick={() => setIsCalendarOpen((current) => !current)}
                       aria-expanded={isCalendarOpen}
                       aria-haspopup="dialog"
                     >
-                      <span>{endDateLabel}</span>
+                      <span>{startDateLabel}</span>
                       <ChevronDown size={14} />
                     </button>
 
-                    <label className="booking-time-field">
-                      <span className="booking-sr-label">End time</span>
-                      <Clock3 size={14} />
-                      <input
-                        type="time"
-                        className="form-control booking-time-input"
-                        value={endTime}
-                        onChange={(event) => setEndTime(event.target.value)}
-                      />
-                    </label>
+                    {isCalendarOpen && (
+                      <div className="booking-calendar-popover">
+                        <div className="booking-calendar-shell">
+                          <Suspense fallback={<p className="booking-calendar-loading">Loading calendar...</p>}>
+                            <DayPicker
+                              className="booking-day-picker"
+                              mode="range"
+                              numberOfMonths={1}
+                              selected={selectedRange}
+                              onSelect={(range) => {
+                                setStartDate(range?.from ? range.from.toISOString().split('T')[0] : '');
+                                setEndDate(range?.to ? range.to.toISOString().split('T')[0] : '');
+                                setError('');
+                                setSuccess('');
+                                if (range?.from && range?.to) {
+                                  setIsCalendarOpen(false);
+                                }
+                              }}
+                              disabled={[{ before: today }, ...blockedCalendarRanges]}
+                              modifiers={{ booked: blockedCalendarRanges }}
+                              modifiersClassNames={{ booked: 'rdp-day_booked' }}
+                            />
+                          </Suspense>
+                        </div>
+                      </div>
+                    )}
                   </div>
+
+                  <label className="booking-time-field">
+                    <span className="booking-sr-label">Start time</span>
+                    <Clock3 size={14} />
+                    <input
+                      type="time"
+                      className="form-control booking-time-input"
+                      value={startTime}
+                      onChange={(event) => setStartTime(event.target.value)}
+                    />
+                  </label>
                 </div>
               </div>
 
-              {selectedRangeOverlaps && (
-                <p className="booking-inline-note booking-inline-note-warning">
-                  The selected date range is unavailable.
-                </p>
-              )}
+              <div className="booking-datetime-row">
+                <div className="booking-datetime-label">End</div>
+                <div className="booking-datetime-fields">
+                  <button
+                    type="button"
+                    className="form-control booking-date-trigger booking-date-trigger-static"
+                    onClick={() => setIsCalendarOpen((current) => !current)}
+                    aria-expanded={isCalendarOpen}
+                    aria-haspopup="dialog"
+                  >
+                    <span>{endDateLabel}</span>
+                    <ChevronDown size={14} />
+                  </button>
 
-              <div className="booking-total-row">
-                <span>Total</span>
-                <strong>{formatINR(total || 0)}</strong>
+                  <label className="booking-time-field">
+                    <span className="booking-sr-label">End time</span>
+                    <Clock3 size={14} />
+                    <input
+                      type="time"
+                      className="form-control booking-time-input"
+                      value={endTime}
+                      onChange={(event) => setEndTime(event.target.value)}
+                    />
+                  </label>
+                </div>
               </div>
+            </div>
 
-              <button
-                type="submit"
-                className="btn btn-primary w-full booking-submit-btn"
-                disabled={!canConfirm}
-              >
-                {cloth.availability ? 'Confirm Booking' : 'Currently Unavailable'}
-              </button>
-            </form>
+            {selectedRangeOverlaps && (
+              <p className="booking-inline-note booking-inline-note-warning">
+                The selected date range is unavailable.
+              </p>
+            )}
+
+            <div className="booking-total-row">
+              <span>Total</span>
+              <strong>{formatINR(total || 0)}</strong>
+            </div>
+
+            <button
+              type="submit"
+              className="btn btn-primary w-full booking-submit-btn"
+              disabled={!canConfirm}
+            >
+              {cloth.availability ? 'Confirm Booking' : 'Currently Unavailable'}
+            </button>
+          </form>
         </aside>
       </section>
-
-      {reviews.length > 0 && (
-        <section style={{ marginTop: '3rem' }}>
-          <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Star size={20} color="var(--primary-color)" /> Reviews ({reviews.length})
-          </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
-            {reviews.map((review) => (
-              <div key={review._id} className="glass" style={{ padding: '1.25rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                  <strong style={{ color: 'var(--text-color)' }}>{review.userId?.name || 'Anonymous User'}</strong>
-                  <div style={{ display: 'flex', gap: '2px' }}>
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} size={14} color={i < review.rating ? 'var(--primary-color)' : 'rgba(255,255,255,0.2)'} fill={i < review.rating ? 'var(--primary-color)' : 'none'} />
-                    ))}
-                  </div>
-                </div>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.5', margin: 0 }}>
-                  "{review.comment}"
-                </p>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.75rem', opacity: 0.6 }}>
-                  {new Date(review.createdAt).toLocaleDateString()}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
     </div>
   );
 };
