@@ -280,4 +280,28 @@ const returnCloth = async (req, res) => {
   }
 };
 
-module.exports = { createBooking, getBlockedDatesForCloth, getUserBookings, getAllBookings, cancelBooking, returnCloth };
+const requestReturn = async (req, res) => {
+  try {
+    if (useDevStore) {
+      const booking = devStore.getBookingById(req.params.id);
+      if (!booking || booking.userId !== req.user.id) return res.status(404).json({ message: 'Booking not found' });
+      if (booking.status !== 'booked') return res.status(400).json({ message: 'Can only return active bookings' });
+
+      const updated = devStore.updateBooking(req.params.id, { status: 'return_requested' });
+      return res.json(updated);
+    }
+
+    const booking = await Booking.findOne({ _id: req.params.id, userId: req.user.id });
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (booking.status !== 'booked') return res.status(400).json({ message: 'Can only return active bookings' });
+
+    booking.status = 'return_requested';
+    await booking.save();
+    
+    res.json(booking);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { createBooking, getBlockedDatesForCloth, getUserBookings, getAllBookings, cancelBooking, returnCloth, requestReturn };

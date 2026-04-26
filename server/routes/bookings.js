@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createBooking, getBlockedDatesForCloth, getUserBookings, getAllBookings, cancelBooking, returnCloth } = require('../controllers/bookingController');
+const { createBooking, getBlockedDatesForCloth, getUserBookings, getAllBookings, cancelBooking, returnCloth, requestReturn } = require('../controllers/bookingController');
 const { protect, admin, approvedAccount } = require('../middleware/authMiddleware');
 const { validateBookingPayload, validateObjectIdParam } = require('../middleware/validationMiddleware');
 
@@ -13,6 +13,7 @@ router.route('/')
   .get(protect, approvedAccount, admin, getAllBookings);
 
 router.put('/:id/cancel', protect, approvedAccount, validateObjectIdParam('id', 'booking ID'), cancelBooking);
+router.put('/:id/request-return', protect, approvedAccount, validateObjectIdParam('id', 'booking ID'), requestReturn);
 router.put('/:id/return', protect, approvedAccount, admin, validateObjectIdParam('id', 'booking ID'), returnCloth);
 
 module.exports = router;

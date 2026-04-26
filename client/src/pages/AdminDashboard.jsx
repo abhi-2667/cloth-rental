@@ -397,6 +397,7 @@ const AdminDashboard = () => {
             <h2>All Bookings</h2>
             <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
               <button className={`btn ${bookingFilter === 'booked' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setBookingFilter('booked')}>Booked</button>
+              <button className={`btn ${bookingFilter === 'return_requested' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setBookingFilter('return_requested')}>Return Requested</button>
               <button className={`btn ${bookingFilter === 'returned' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setBookingFilter('returned')}>Returned</button>
               <button className={`btn ${bookingFilter === 'overdue' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setBookingFilter('overdue')}>Overdue</button>
               <button className={`btn ${bookingFilter === 'all' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setBookingFilter('all')}>All</button>
@@ -429,12 +430,12 @@ const AdminDashboard = () => {
                   <td>
                     <span style={{ 
                       padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem',
-                      background: b.status === 'returned' ? 'rgba(16, 185, 129, 0.2)' : b.status === 'cancelled' ? 'rgba(248, 113, 113, 0.18)' : 'rgba(199, 160, 55, 0.2)',
-                      color: b.status === 'returned' ? 'var(--success)' : b.status === 'cancelled' ? 'var(--danger)' : 'var(--primary-color)'
-                    }}>{b.status.toUpperCase()}</span>
+                      background: b.status === 'returned' ? 'rgba(16, 185, 129, 0.2)' : b.status === 'cancelled' ? 'rgba(248, 113, 113, 0.18)' : b.status === 'return_requested' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(199, 160, 55, 0.2)',
+                      color: b.status === 'returned' ? 'var(--success)' : b.status === 'cancelled' ? 'var(--danger)' : b.status === 'return_requested' ? '#f59e0b' : 'var(--primary-color)'
+                    }}>{b.status.replace('_', ' ').toUpperCase()}</span>
                   </td>
                   <td>
-                    {b.status === 'booked' && (
+                    {(b.status === 'booked' || b.status === 'return_requested') && (
                       <button onClick={() => handleReturn(b._id)} className="btn" style={{ background: 'var(--success)', color: 'white', padding: '0.5rem', fontSize: '0.8rem' }}>
                         <CheckCircle size={16} /> Mark Returned
                       </button>

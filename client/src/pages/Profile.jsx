@@ -149,6 +149,18 @@ const Profile = () => {
     }
   };
 
+  const handleRequestReturn = async (bookingId) => {
+    const confirmed = window.confirm('Initiate return process for this item?');
+    if (!confirmed) return;
+
+    try {
+      await api.put(`/bookings/${bookingId}/request-return`);
+      await refreshBookings();
+    } catch (err) {
+      alert(err?.response?.data?.message || 'Unable to initiate return right now.');
+    }
+  };
+
   return (
     <div className="profile-page">
       <section className="glass profile-hero fade-up">
@@ -397,8 +409,8 @@ const Profile = () => {
 
                   <div className="profile-booking-meta">
                     <p>{formatINR(booking.totalPrice)}</p>
-                    <span className={`profile-status-chip ${booking.status === 'returned' ? 'is-returned' : booking.status === 'cancelled' ? 'is-cancelled' : 'is-booked'}`}>
-                      {booking.status.toUpperCase()}
+                    <span className={`profile-status-chip ${booking.status === 'returned' ? 'is-returned' : booking.status === 'cancelled' ? 'is-cancelled' : booking.status === 'return_requested' ? 'is-booked' : 'is-booked'}`} style={{ borderColor: booking.status === 'return_requested' ? '#f59e0b' : '', color: booking.status === 'return_requested' ? '#f59e0b' : '' }}>
+                      {booking.status.replace('_', ' ').toUpperCase()}
                     </span>
                     {booking.status === 'returned' && (
                       <Link
@@ -407,6 +419,16 @@ const Profile = () => {
                       >
                         <Star size={12} />Leave a review
                       </Link>
+                    )}
+                    {booking.status === 'booked' && (
+                      <button
+                        type="button"
+                        className="btn btn-outline"
+                        style={{ marginTop: '0.75rem', padding: '0.45rem 0.8rem', fontSize: '0.82rem', borderColor: 'var(--success)', color: 'var(--success)' }}
+                        onClick={() => handleRequestReturn(booking._id)}
+                      >
+                        Initiate Return
+                      </button>
                     )}
                     {canCancelBooking(booking) && (
                       <button

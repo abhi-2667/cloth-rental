@@ -612,7 +612,6 @@ const deleteUserAccount = (userId) => {
     return { ok: false, reason: 'last_admin' };
   }
 
-  state.bookings = state.bookings.filter((booking) => booking.userId !== normalizedUserId);
   state.notifications = state.notifications.filter((notification) => notification.userId !== normalizedUserId);
   state.wishlistItems = state.wishlistItems.filter((item) => item.userId !== normalizedUserId);
   state.reviews = state.reviews.filter((review) => review.userId !== normalizedUserId);
