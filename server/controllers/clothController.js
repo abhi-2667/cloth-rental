@@ -120,16 +120,18 @@ const updateCloth = async (req, res) => {
   try {
     const { title, description, category, occasion, gender, size, pricePerDay, availability } = req.body;
     
-    let updateFields = {
-      title,
-      description,
-      category,
-      occasion: occasion || category,
-      gender,
-      size,
-      pricePerDay,
-      availability,
-    };
+    // Only update fields that are actually provided (not undefined)
+    let updateFields = {};
+    
+    if (title !== undefined) updateFields.title = title;
+    if (description !== undefined) updateFields.description = description;
+    if (category !== undefined) updateFields.category = category;
+    if (occasion !== undefined) updateFields.occasion = occasion;
+    else if (category !== undefined) updateFields.occasion = category; // Use category as occasion if not specified
+    if (gender !== undefined) updateFields.gender = gender;
+    if (size !== undefined) updateFields.size = size;
+    if (pricePerDay !== undefined) updateFields.pricePerDay = pricePerDay;
+    if (availability !== undefined) updateFields.availability = availability;
     
     if (req.file) {
       updateFields.imageUrl = '/uploads/' + req.file.filename;
